@@ -7,28 +7,43 @@ const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [about, setAbout] = useState({});
+  const [ytPartners, setYtPartners] = useState([]);
+  const [ytPartnersEnabled, setYtPartnersEnabled] = useState(false);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [planLocation, setPlanLocation] = useState('UAE');
   const [locationSettings, setLocationSettings] = useState([]);
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [discordMembers, setDiscordMembers] = useState('500+');
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const [paid, usersRes, ticketsRes, aboutRes, locationsRes] = await Promise.all([
+    const [paid, usersRes, ticketsRes, aboutRes, locationsRes, ytRes, ytEnabledRes, discordRes] = await Promise.all([
       axios.get('/api/admin/paid-plans'),
       axios.get('/api/admin/users'),
       axios.get('/api/admin/tickets'),
       axios.get('/api/admin/about'),
-      axios.get('/api/admin/locations')
+      axios.get('/api/admin/locations'),
+      axios.get('/api/admin/yt-partners'),
+      axios.get('/api/admin/settings/yt_partners_enabled'),
+      axios.get('/api/admin/settings/discord_members')
     ]);
     setPaidPlans(paid.data);
     setUsers(usersRes.data);
     setTickets(ticketsRes.data);
     setAbout(aboutRes.data);
     setLocationSettings(locationsRes.data);
+    setYtPartners(ytRes.data);
+    setYtPartnersEnabled(ytEnabledRes.data.value === '1');
+    setDiscordMembers(discordRes.data.value || '500+');
+  };
+
+  const handleDiscordMembersUpdate = async () => {
+    await axios.put('/api/admin/settings/discord_members', { value: discordMembers });
+    alert('Discord members updated!');
   };
 
   const handleSavePlan = async (type) => {
@@ -38,6 +53,11 @@ const AdminPanel = () => {
       await axios.post(`/api/admin/paid-plans`, form);
     }
     setModal(null);
+    loadData();
+  };
+
+  const handleQuickDiscount = async (plan, discount) => {
+    await axios.put(`/api/admin/paid-plans/${plan.id}`, { ...plan, discount: parseInt(discount) || 0 });
     loadData();
   };
 
@@ -65,13 +85,74 @@ const AdminPanel = () => {
   };
 
   const openPlanModal = (plan = null) => {
-    setForm(plan || { name: '', ram: '', cpu: '', storage: '', location: planLocation, price: '', sortOrder: 0 });
+    setForm(plan || { name: '', ram: '', cpu: '', storage: '', location: planLocation, price: '', discount: 0, sortOrder: 0 });
     setModal({ type: 'plan' });
   };
 
   const openTicketModal = (ticket) => {
     setForm({ ...ticket, newResponse: ticket.adminResponse || '' });
     setModal({ type: 'ticket' });
+  };
+
+  const openYtPartnerModal = (partner = null) => {
+    setForm(partner || { name: '', link: '', logo: '' });
+    setModal({ type: 'ytpartner' });
+  };
+
+  const handleSaveYtPartner = async () => {
+    if (form.id) {
+      await axios.put(`/api/admin/yt-partners/${form.id}`, form);
+    } else {
+      await axios.post('/api/admin/yt-partners', form);
+    }
+    setModal(null);
+    loadData();
+  };
+
+  const handleDeleteYtPartner = async (id) => {
+    if (!window.confirm('Delete this partner?')) return;
+    await axios.delete(`/api/admin/yt-partners/${id}`);
+    loadData();
+  };
+
+  const handleYtPartnersToggle = async () => {
+    await axios.put('/api/admin/settings/yt_partners_enabled', { value: ytPartnersEnabled ? '0' : '1' });
+    setYtPartnersEnabled(!ytPartnersEnabled);
+  };
+
+  // Drag & Drop handlers for YT Partners
+  const handleDragStart = (e, partner) => {
+    setDraggedItem(partner);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e, targetPartner) => {
+    e.preventDefault();
+    if (!draggedItem || draggedItem.id === targetPartner.id) return;
+
+    const newPartners = [...ytPartners];
+    const draggedIndex = newPartners.findIndex(p => p.id === draggedItem.id);
+    const targetIndex = newPartners.findIndex(p => p.id === targetPartner.id);
+
+    // Remove dragged item and insert at target position
+    newPartners.splice(draggedIndex, 1);
+    newPartners.splice(targetIndex, 0, draggedItem);
+
+    setYtPartners(newPartners);
+    setDraggedItem(null);
+
+    // Save new order to server
+    const orderedIds = newPartners.map(p => p.id);
+    await axios.put('/api/admin/yt-partners-reorder', { orderedIds });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
   };
 
   return (
@@ -85,9 +166,93 @@ const AdminPanel = () => {
         <button className={tab === 'tickets' ? 'active' : ''} onClick={() => setTab('tickets')}>🎫 Orders/Tickets</button>
         <button className={tab === 'paid' ? 'active' : ''} onClick={() => setTab('paid')}>💰 Paid Plans</button>
         <button className={tab === 'locations' ? 'active' : ''} onClick={() => setTab('locations')}>🌍 Locations</button>
-        <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>👥 Users</button>
+        <button className={tab === 'ytpartners' ? 'active' : ''} onClick={() => setTab('ytpartners')}>📺 YT Partners</button>
+        <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>👥 Members</button>
+        <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>🔐 Users</button>
         <button className={tab === 'about' ? 'active' : ''} onClick={() => setTab('about')}>📋 About</button>
       </div>
+
+      {/* Members Tab */}
+      {tab === 'members' && (
+        <div className="card">
+          <h3 style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'}}>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#5865F2" strokeWidth="1.5">
+              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+            </svg>
+            Discord Members
+          </h3>
+          <p style={{color: 'var(--text-muted)', marginBottom: '24px'}}>
+            Set the Discord member count that shows on Dashboard
+          </p>
+          
+          <div style={{
+            background: 'rgba(88, 101, 242, 0.1)',
+            border: '1px solid rgba(88, 101, 242, 0.3)',
+            borderRadius: '16px',
+            padding: '30px'
+          }}>
+            <label style={{color: 'var(--text-secondary)', fontWeight: '600', display: 'block', marginBottom: '12px'}}>
+              Member Count
+            </label>
+            <div style={{display: 'flex', gap: '16px', alignItems: 'center'}}>
+              <input 
+                type="text" 
+                value={discordMembers} 
+                onChange={e => setDiscordMembers(e.target.value)}
+                placeholder="e.g., 500+, 1K+, 2.5K"
+                style={{
+                  flex: 1,
+                  padding: '16px 20px',
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '2px solid rgba(88, 101, 242, 0.4)',
+                  borderRadius: '12px',
+                  color: '#fff',
+                  fontSize: '1.2rem',
+                  fontWeight: '700'
+                }}
+              />
+              <button className="btn btn-discord" onClick={handleDiscordMembersUpdate} style={{padding: '16px 32px', fontSize: '1rem'}}>
+                💾 Save
+              </button>
+            </div>
+            <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '12px'}}>
+              💡 Examples: 500+, 1K+, 2.5K, 10K+
+            </p>
+          </div>
+
+          {/* Preview */}
+          <div style={{marginTop: '30px'}}>
+            <h4 style={{color: 'var(--text-secondary)', marginBottom: '16px'}}>Preview on Dashboard:</h4>
+            <div style={{
+              display: 'inline-flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '24px 40px',
+              background: 'rgba(0,0,0,0.3)',
+              borderRadius: '16px',
+              border: '1px solid var(--glass-border)'
+            }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '12px',
+                background: 'transparent',
+                border: '2px solid #FF2E00',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '12px'
+              }}>
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#FF2E00" strokeWidth="1.5">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                </svg>
+              </div>
+              <h4 style={{color: 'var(--text-primary)', fontWeight: '700', marginBottom: '4px'}}>{discordMembers} Members</h4>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.85rem'}}>Join our community</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tickets/Orders Tab */}
       {tab === 'tickets' && (
@@ -170,11 +335,11 @@ const AdminPanel = () => {
           </div>
           <div className="table-container">
             <table>
-              <thead><tr><th>Name</th><th>RAM</th><th>CPU</th><th>Storage</th><th>Location</th><th>Price</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>RAM</th><th>CPU</th><th>Storage</th><th>Location</th><th>Price</th><th>Discount</th><th>Actions</th></tr></thead>
               <tbody>
                 {paidPlans.filter(p => p.location === planLocation).length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{textAlign: 'center', padding: '40px', color: 'var(--text-muted)'}}>
+                    <td colSpan="8" style={{textAlign: 'center', padding: '40px', color: 'var(--text-muted)'}}>
                       No plans for {planLocation} yet. Click "+ Add Plan" to create one.
                     </td>
                   </tr>
@@ -187,6 +352,29 @@ const AdminPanel = () => {
                       <td>{p.storage}</td>
                       <td>{p.location}</td>
                       <td style={{color: 'var(--success)', fontWeight: '700'}}>{p.price}</td>
+                      <td>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="100" 
+                            defaultValue={p.discount || 0}
+                            onBlur={(e) => handleQuickDiscount(p, e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleQuickDiscount(p, e.target.value)}
+                            style={{
+                              width: '60px',
+                              padding: '8px',
+                              background: 'rgba(0, 200, 83, 0.1)',
+                              border: '1px solid rgba(0, 200, 83, 0.3)',
+                              borderRadius: '8px',
+                              color: '#00E676',
+                              fontWeight: '700',
+                              textAlign: 'center'
+                            }}
+                          />
+                          <span style={{color: 'var(--text-muted)'}}>%</span>
+                        </div>
+                      </td>
                       <td className="action-btns">
                         <button className="btn btn-secondary" onClick={() => openPlanModal(p)}>Edit</button>
                         <button className="btn btn-danger" onClick={() => handleDeletePlan('paid', p.id)}>Delete</button>
@@ -260,13 +448,99 @@ const AdminPanel = () => {
         </div>
       )}
 
+      {/* YT Partners Tab */}
+      {tab === 'ytpartners' && (
+        <div className="card">
+          {/* Enable/Disable Toggle */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            background: ytPartnersEnabled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 106, 0, 0.1)',
+            border: `1px solid ${ytPartnersEnabled ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 106, 0, 0.3)'}`,
+            borderRadius: '12px',
+            marginBottom: '20px'
+          }}>
+            <div>
+              <h4 style={{margin: 0, color: 'var(--text-primary)'}}>📺 YT Partners Page</h4>
+              <p style={{margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem'}}>
+                {ytPartnersEnabled ? 'Page is visible to users' : 'Page shows "Coming Soon" to users'}
+              </p>
+            </div>
+            <button 
+              className={`btn ${ytPartnersEnabled ? 'btn-danger' : 'btn-success'}`}
+              onClick={handleYtPartnersToggle}
+              style={{minWidth: '120px'}}
+            >
+              {ytPartnersEnabled ? '❌ Disable' : '✅ Enable'}
+            </button>
+          </div>
+
+          <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '20px'}}>
+            <h3>📺 YT Partners ({ytPartners.length})</h3>
+            <button className="btn btn-primary" onClick={() => openYtPartnerModal()}>+ Add Partner</button>
+          </div>
+          {ytPartners.length === 0 ? (
+            <div className="empty-state"><p>No YT Partners yet. Click "+ Add Partner" to add one.</p></div>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{width: '40px'}}>⋮⋮</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>YouTube Link</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ytPartners.map(p => (
+                    <tr 
+                      key={p.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, p)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, p)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        cursor: 'grab',
+                        background: draggedItem?.id === p.id ? 'rgba(255, 106, 0, 0.2)' : 'transparent',
+                        opacity: draggedItem?.id === p.id ? 0.5 : 1
+                      }}
+                    >
+                      <td style={{cursor: 'grab', color: 'var(--text-muted)', fontSize: '1.2rem'}}>⋮⋮</td>
+                      <td style={{color: 'var(--primary-light)', fontWeight: '700'}}>#{p.id}</td>
+                      <td style={{fontWeight: '600'}}>{p.name}</td>
+                      <td>
+                        <a href={p.link} target="_blank" rel="noopener noreferrer" style={{color: '#FF0000', textDecoration: 'none'}}>
+                          {p.link.length > 40 ? p.link.substring(0, 40) + '...' : p.link}
+                        </a>
+                      </td>
+                      <td className="action-btns">
+                        <button className="btn btn-secondary" onClick={() => openYtPartnerModal(p)}>Edit</button>
+                        <button className="btn btn-danger" onClick={() => handleDeleteYtPartner(p.id)}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '12px', textAlign: 'center'}}>
+                💡 Drag rows to reorder partners
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Users Tab */}
       {tab === 'users' && (
         <div className="card">
           <h3>👥 All Users ({users.length})</h3>
           <div className="table-container">
             <table>
-              <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+              <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
               <tbody>
                 {users.map(u => (
                   <tr key={u.id}>
@@ -274,6 +548,22 @@ const AdminPanel = () => {
                     <td style={{color: 'var(--text-muted)'}}>{u.email}</td>
                     <td><span className={`badge ${u.isAdmin ? 'badge-approved' : 'badge-pending'}`}>{u.isAdmin ? 'Admin' : 'User'}</span></td>
                     <td style={{color: 'var(--text-muted)'}}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      {!u.isAdmin && (
+                        <button 
+                          className="btn btn-danger" 
+                          style={{padding: '6px 12px', fontSize: '0.85rem'}}
+                          onClick={async () => {
+                            if (window.confirm(`Delete user ${u.username}?`)) {
+                              await axios.delete(`/api/admin/users/${u.id}`);
+                              loadData();
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -286,25 +576,142 @@ const AdminPanel = () => {
       {tab === 'about' && (
         <div className="card">
           <h3>📋 Edit About Content</h3>
+
           <div className="form-group">
             <label>About Content</label>
             <textarea value={about.content || ''} onChange={e => setAbout({...about, content: e.target.value})} rows={5} />
           </div>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px'}}>
-            <div className="form-group">
-              <label>Owner</label>
-              <input value={about.owner || ''} onChange={e => setAbout({...about, owner: e.target.value})} />
+          
+          {/* Team Members with Photos */}
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px'}}>
+            {/* Owner */}
+            <div style={{background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)'}}>
+              <div style={{textAlign: 'center', marginBottom: '16px'}}>
+                <div 
+                  style={{
+                    width: '80px', 
+                    height: '80px', 
+                    borderRadius: '50%', 
+                    background: about.ownerPhoto ? `url(${about.ownerPhoto}) center/cover` : 'linear-gradient(135deg, #FF2E00, #FF6A00)', 
+                    margin: '0 auto 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    border: '3px solid var(--primary)'
+                  }}
+                  onClick={() => document.getElementById('owner-photo').click()}
+                >
+                  {!about.ownerPhoto && <span style={{fontSize: '2rem'}}>👑</span>}
+                </div>
+                <input 
+                  type="file" 
+                  id="owner-photo" 
+                  accept="image/*" 
+                  style={{display: 'none'}}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setAbout({...about, ownerPhoto: reader.result});
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload</p>
+              </div>
+              <div className="form-group" style={{marginBottom: 0}}>
+                <label>👑 Owner</label>
+                <input value={about.owner || ''} onChange={e => setAbout({...about, owner: e.target.value})} />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Founder</label>
-              <input value={about.coOwner || ''} onChange={e => setAbout({...about, coOwner: e.target.value})} />
+
+            {/* Founder */}
+            <div style={{background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)'}}>
+              <div style={{textAlign: 'center', marginBottom: '16px'}}>
+                <div 
+                  style={{
+                    width: '80px', 
+                    height: '80px', 
+                    borderRadius: '50%', 
+                    background: about.coOwnerPhoto ? `url(${about.coOwnerPhoto}) center/cover` : 'linear-gradient(135deg, #8B5CF6, #6366F1)', 
+                    margin: '0 auto 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    border: '3px solid #8B5CF6'
+                  }}
+                  onClick={() => document.getElementById('founder-photo').click()}
+                >
+                  {!about.coOwnerPhoto && <span style={{fontSize: '2rem'}}>⭐</span>}
+                </div>
+                <input 
+                  type="file" 
+                  id="founder-photo" 
+                  accept="image/*" 
+                  style={{display: 'none'}}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setAbout({...about, coOwnerPhoto: reader.result});
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload</p>
+              </div>
+              <div className="form-group" style={{marginBottom: 0}}>
+                <label>⭐ Founder</label>
+                <input value={about.coOwner || ''} onChange={e => setAbout({...about, coOwner: e.target.value})} />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Managers</label>
-              <input value={about.managers || ''} onChange={e => setAbout({...about, managers: e.target.value})} />
+
+            {/* Manager */}
+            <div style={{background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)'}}>
+              <div style={{textAlign: 'center', marginBottom: '16px'}}>
+                <div 
+                  style={{
+                    width: '80px', 
+                    height: '80px', 
+                    borderRadius: '50%', 
+                    background: about.managersPhoto ? `url(${about.managersPhoto}) center/cover` : 'linear-gradient(135deg, #10B981, #059669)', 
+                    margin: '0 auto 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    border: '3px solid #10B981'
+                  }}
+                  onClick={() => document.getElementById('manager-photo').click()}
+                >
+                  {!about.managersPhoto && <span style={{fontSize: '2rem'}}>🛡️</span>}
+                </div>
+                <input 
+                  type="file" 
+                  id="manager-photo" 
+                  accept="image/*" 
+                  style={{display: 'none'}}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setAbout({...about, managersPhoto: reader.result});
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload</p>
+              </div>
+              <div className="form-group" style={{marginBottom: 0}}>
+                <label>🛡️ Manager</label>
+                <input value={about.managers || ''} onChange={e => setAbout({...about, managers: e.target.value})} />
+              </div>
             </div>
           </div>
-          <button className="btn btn-success" onClick={handleAboutUpdate}>Save Changes</button>
+          
+          <button className="btn btn-success" style={{marginTop: '20px'}} onClick={handleAboutUpdate}>Save Changes</button>
         </div>
       )}
 
@@ -341,6 +748,10 @@ const AdminPanel = () => {
             <div className="form-group">
               <label>Price</label>
               <input value={form.price} onChange={e => setForm({...form, price: e.target.value})} placeholder="e.g., 500 PKR" />
+            </div>
+            <div className="form-group">
+              <label>Discount % (0 for no discount)</label>
+              <input type="number" min="0" max="100" value={form.discount || 0} onChange={e => setForm({...form, discount: parseInt(e.target.value) || 0})} placeholder="e.g., 20" />
             </div>
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>
@@ -402,6 +813,60 @@ const AdminPanel = () => {
               <button className="btn btn-success" onClick={() => handleTicketUpdate(form.id, 'approved', form.newResponse)}>
                 ✅ Approve
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* YT Partner Modal */}
+      {modal?.type === 'ytpartner' && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>{form.id ? 'Edit' : 'Add'} YT Partner</h3>
+            <div className="form-group">
+              <label>YouTuber Name</label>
+              <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g., TechGamer" />
+            </div>
+            <div className="form-group">
+              <label>YouTube Channel Link</label>
+              <input value={form.link} onChange={e => setForm({...form, link: e.target.value})} placeholder="e.g., https://youtube.com/@channel" />
+            </div>
+            <div className="form-group">
+              <label>Logo (Upload Image)</label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={e => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setForm({...form, logo: reader.result});
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                style={{padding: '10px'}}
+              />
+              {form.logo && (
+                <div style={{marginTop: '10px', textAlign: 'center'}}>
+                  <img src={form.logo} alt="Preview" style={{width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover'}} />
+                </div>
+              )}
+            </div>
+            <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+              <input 
+                type="checkbox" 
+                id="isFeatured"
+                checked={form.isFeatured || false}
+                onChange={e => setForm({...form, isFeatured: e.target.checked})}
+                style={{width: '20px', height: '20px', cursor: 'pointer'}}
+              />
+              <label htmlFor="isFeatured" style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <span style={{color: '#FFD700', fontSize: '1.2rem'}}>⭐</span> Featured Partner (Big YouTuber)
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-success" onClick={handleSaveYtPartner}>Save</button>
             </div>
           </div>
         </div>

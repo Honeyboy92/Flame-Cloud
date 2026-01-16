@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 const Layout = () => {
   const { user, logout, updateUser } = useAuth();
+  const navigate = useNavigate();
   const [showChat, setShowChat] = useState(false);
   const [showUserList, setShowUserList] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -13,19 +14,18 @@ const Layout = () => {
   const [adminId, setAdminId] = useState(null);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [profileData, setProfileData] = useState({ email: '', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [profileData, setProfileData] = useState({ email: '', username: '', currentPassword: '', newPassword: '', confirmPassword: '', avatar: null });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (user && !user.isAdmin) {
-      axios.get('/api/chat/admin').then(res => setAdminId(res.data?.id));
+    if (user) {
+      if (!user.isAdmin) {
+        axios.get('/api/chat/admin').then(res => setAdminId(res.data?.id)).catch(() => {});
+      }
     }
-    checkUnread();
-    const interval = setInterval(checkUnread, 5000);
-    return () => clearInterval(interval);
   }, [user]);
 
   useEffect(() => {
@@ -40,16 +40,11 @@ const Layout = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const checkUnread = () => {
-    axios.get('/api/chat/unread').then(res => setUnreadCount(res.data.unread)).catch(() => {});
-  };
-
   const loadMessages = () => {
     const otherId = user.isAdmin ? selectedUser?.id : adminId;
     if (otherId) {
       axios.get(`/api/chat/messages/${otherId}`).then(res => {
         setMessages(res.data);
-        checkUnread();
       });
     }
   };
@@ -81,9 +76,22 @@ const Layout = () => {
   };
 
   const openProfileModal = () => {
-    setProfileData({ email: user?.email || '', currentPassword: '', newPassword: '', confirmPassword: '' });
+    setProfileData({ email: user?.email || '', username: user?.username || '', currentPassword: '', newPassword: '', confirmPassword: '', avatar: user?.avatar || null });
+    setAvatarPreview(user?.avatar || null);
     setProfileMessage({ type: '', text: '' });
     setShowProfileModal(true);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+        setProfileData({...profileData, avatar: reader.result});
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleProfileUpdate = async (e) => {
@@ -92,9 +100,22 @@ const Layout = () => {
     setProfileMessage({ type: '', text: '' });
 
     try {
+      // Update username if changed
+      if (profileData.username && profileData.username !== user?.username) {
+        await axios.put('/api/auth/update-username', { username: profileData.username });
+        updateUser({ ...user, username: profileData.username });
+      }
+
       // Update email if changed
       if (profileData.email && profileData.email !== user?.email) {
         await axios.put('/api/auth/update-email', { email: profileData.email });
+        updateUser({ ...user, email: profileData.email });
+      }
+
+      // Update avatar if changed
+      if (profileData.avatar !== user?.avatar) {
+        await axios.put('/api/auth/update-avatar', { avatar: profileData.avatar });
+        updateUser({ ...user, avatar: profileData.avatar });
       }
 
       // Update password if provided
@@ -152,7 +173,7 @@ const Layout = () => {
 
       <header className="top-navbar">
         <div className="navbar-brand">
-          <div className="brand-icon">🔥</div>
+          <img src="/logo.png" alt="🔥" className="brand-logo" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
           <div className="brand-text">
             <h1>Flame Cloud</h1>
             <span>Premium Minecraft Hosting</span>
@@ -178,6 +199,16 @@ const Layout = () => {
               </svg>
             </div>
             <span>Paid Plans</span>
+          </NavLink>
+
+          <NavLink to="/yt-partners" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <div className="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+              </svg>
+            </div>
+            <span>YT Partners</span>
           </NavLink>
 
           <NavLink to="/about" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
@@ -214,17 +245,28 @@ const Layout = () => {
         </nav>
 
         <div className="navbar-user">
-          <div className="user-info" onClick={openProfileModal} style={{cursor: 'pointer'}}>
-            <div className="user-avatar">{user?.username?.charAt(0).toUpperCase()}</div>
-            <span className="user-name">{user?.username}</span>
-          </div>
-          <button className="logout-btn" onClick={logout}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </button>
+          {user ? (
+            <>
+              <div className="user-info" onClick={openProfileModal} style={{cursor: 'pointer'}}>
+                <div className="user-avatar" style={user?.avatar ? {background: `url(${user.avatar}) center/cover`} : {}}>
+                  {!user?.avatar && user?.username ? user.username.charAt(0).toUpperCase() : null}
+                </div>
+                <span className="user-name">{user?.username}</span>
+              </div>
+              <button className="logout-btn" onClick={logout}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </button>
+            </>
+          ) : (
+            <div style={{display: 'flex', gap: '10px'}}>
+              <NavLink to="/login" className="btn btn-secondary" style={{padding: '8px 16px'}}>Sign In</NavLink>
+              <NavLink to="/signup" className="btn btn-primary" style={{padding: '8px 16px'}}>Sign Up</NavLink>
+            </div>
+          )}
         </div>
       </header>
       
@@ -249,7 +291,7 @@ const Layout = () => {
 
         {/* Client Chat Button (for users) / Users Button (for admin) */}
         {user?.isAdmin ? (
-          <button className="float-btn users-btn" onClick={openUserList}>
+          <button className="float-btn users-btn" onClick={() => navigate('/chat')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
@@ -257,15 +299,13 @@ const Layout = () => {
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
             <span>Users</span>
-            {unreadCount > 0 && <div className="unread-badge">{unreadCount}</div>}
           </button>
         ) : (
-          <button className="float-btn chat-btn" onClick={() => setShowChat(true)}>
+          <button className="float-btn chat-btn" onClick={() => navigate('/chat')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
             <span>Client Chat</span>
-            {unreadCount > 0 && <div className="unread-badge">{unreadCount}</div>}
           </button>
         )}
       </div>
@@ -291,12 +331,13 @@ const Layout = () => {
               ) : (
                 users.map(u => (
                   <div key={u.id} className="user-list-item" onClick={() => selectUser(u)}>
-                    <div className="user-avatar-small">{u.username.charAt(0).toUpperCase()}</div>
+                    <div className="user-avatar-small" style={u.avatar ? {background: `url(${u.avatar}) center/cover`} : {}}>
+                      {!u.avatar ? u.username.charAt(0).toUpperCase() : ''}
+                    </div>
                     <div className="user-list-info">
                       <span className="user-list-name">{u.username}</span>
                       <span className="user-list-email">{u.email}</span>
                     </div>
-                    {u.unreadCount > 0 && <div className="unread-badge">{u.unreadCount}</div>}
                   </div>
                 ))
               )}
@@ -313,7 +354,7 @@ const Layout = () => {
               {user?.isAdmin ? (
                 <>
                   <div className="chat-header-info">
-                    <div className="chat-avatar">{selectedUser?.username?.charAt(0).toUpperCase()}</div>
+                    <div className="chat-avatar" style={selectedUser?.avatar ? {background: `url(${selectedUser.avatar}) center/cover`} : {}}>{!selectedUser?.avatar && selectedUser?.username?.charAt(0).toUpperCase()}</div>
                     <div>
                       <h3>{selectedUser?.username}</h3>
                       <span className="chat-status">User</span>
@@ -337,22 +378,35 @@ const Layout = () => {
               {messages.length === 0 ? (
                 <div style={{textAlign: 'center', padding: '40px'}}>
                   <div style={{fontSize: '3rem', marginBottom: '16px'}}>💬</div>
-                  <p style={{color: 'var(--text-muted)'}}>No messages yet. Start the conversation!</p>
+                  <p style={{color: '#949ba4'}}>No messages yet. Start the conversation!</p>
                 </div>
               ) : (
-                messages.map(msg => (
-                  <div key={msg.id} className={`chat-message ${msg.senderId === user.id ? 'sent' : 'received'}`}>
-                    {msg.senderId !== user.id && (
-                      <div className="message-avatar">
-                        {user?.isAdmin ? selectedUser?.username?.charAt(0).toUpperCase() : '🔥'}
+                messages.map((msg, index) => {
+                  const showAvatar = index === 0 || messages[index - 1]?.senderId !== msg.senderId;
+                  return (
+                    <div key={msg.id} className={`chat-message ${msg.senderId === user.id ? 'sent' : 'received'}`} style={{paddingTop: showAvatar ? '8px' : '2px'}}>
+                      {showAvatar && msg.senderId !== user.id && (
+                        <div className="message-avatar" style={msg.senderAvatar ? {background: `url(${msg.senderAvatar}) center/cover`} : {background: user?.isAdmin ? '#5865f2' : 'linear-gradient(135deg, #FF2E00, #FF6A00)'}}>
+                          {!msg.senderAvatar && (user?.isAdmin ? selectedUser?.username?.charAt(0).toUpperCase() : '🔥')}
+                        </div>
+                      )}
+                      {showAvatar && msg.senderId === user.id && (
+                        <div className="message-avatar" style={user?.avatar ? {background: `url(${user.avatar}) center/cover`} : {background: '#5865f2'}}>
+                          {!user?.avatar && user?.username?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="message-bubble" style={{paddingLeft: showAvatar ? '0' : '0'}}>
+                        {showAvatar && (
+                          <span className="message-sender">
+                            {msg.senderId === user.id ? user?.username : (user?.isAdmin ? selectedUser?.username : 'Flame Cloud Support')}
+                            <span className="message-time">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                          </span>
+                        )}
+                        <div className="message-content">{msg.message}</div>
                       </div>
-                    )}
-                    <div className="message-bubble">
-                      <div className="message-content">{msg.message}</div>
-                      <div className="message-time">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -379,9 +433,58 @@ const Layout = () => {
             <h3>⚙️ Profile Settings</h3>
             
             <div style={{background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), rgba(255, 46, 0, 0.05))', padding: '20px', borderRadius: '16px', marginBottom: '24px', textAlign: 'center'}}>
-              <div style={{width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: '700', color: '#fff', margin: '0 auto 12px'}}>
-                {user?.username?.charAt(0).toUpperCase()}
+              {/* Avatar Upload */}
+              <div style={{position: 'relative', display: 'inline-block', marginBottom: '12px'}}>
+                <div 
+                  style={{
+                    width: '80px', 
+                    height: '80px', 
+                    borderRadius: '50%', 
+                    background: avatarPreview ? `url(${avatarPreview}) center/cover` : 'linear-gradient(135deg, var(--primary), var(--secondary))', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '2rem', 
+                    fontWeight: '700', 
+                    color: '#fff',
+                    cursor: 'pointer',
+                    border: '3px solid var(--primary)'
+                  }}
+                  onClick={() => document.getElementById('avatar-input').click()}
+                >
+                  {!avatarPreview && user?.username?.charAt(0).toUpperCase()}
+                </div>
+                <div 
+                  style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #FF2E00, #FF6A00)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    border: '2px solid var(--dark-1)'
+                  }}
+                  onClick={() => document.getElementById('avatar-input').click()}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </div>
+                <input 
+                  type="file" 
+                  id="avatar-input" 
+                  accept="image/*" 
+                  onChange={handleAvatarChange} 
+                  style={{display: 'none'}} 
+                />
               </div>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '8px'}}>Click to change avatar</p>
               <p style={{color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.2rem'}}>{user?.username}</p>
               <p style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>{user?.email}</p>
             </div>
@@ -400,6 +503,16 @@ const Layout = () => {
             )}
 
             <form onSubmit={handleProfileUpdate}>
+              <div className="form-group">
+                <label>👤 Username</label>
+                <input 
+                  type="text" 
+                  value={profileData.username} 
+                  onChange={e => setProfileData({...profileData, username: e.target.value})}
+                  placeholder="Enter new username"
+                />
+              </div>
+
               <div className="form-group">
                 <label>📧 Email</label>
                 <input 

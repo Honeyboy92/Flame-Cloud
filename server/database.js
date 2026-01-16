@@ -24,6 +24,7 @@ async function initDB() {
       username TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
+      avatar TEXT,
       isAdmin INTEGER DEFAULT 0,
       hasClaimedFreePlan INTEGER DEFAULT 0,
       claimedIP TEXT,
@@ -40,6 +41,7 @@ async function initDB() {
       storage TEXT NOT NULL,
       location TEXT NOT NULL,
       price TEXT NOT NULL,
+      discount INTEGER DEFAULT 0,
       sortOrder INTEGER DEFAULT 0
     )
   `);
@@ -85,8 +87,11 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       content TEXT NOT NULL,
       owner TEXT NOT NULL,
+      ownerPhoto TEXT,
       coOwner TEXT NOT NULL,
-      managers TEXT NOT NULL
+      coOwnerPhoto TEXT,
+      managers TEXT NOT NULL,
+      managersPhoto TEXT
     )
   `);
 
@@ -97,6 +102,75 @@ async function initDB() {
       isAvailable INTEGER DEFAULT 0
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS yt_partners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      link TEXT NOT NULL,
+      logo TEXT,
+      isFeatured INTEGER DEFAULT 0,
+      createdAt TEXT
+    )
+  `);
+
+  // Add createdAt column to existing yt_partners table if it doesn't exist
+  const ytPartnersColumns = db.exec("PRAGMA table_info(yt_partners)");
+  const hasCreatedAt = ytPartnersColumns.length > 0 && 
+    ytPartnersColumns[0].values.some(col => col[1] === 'createdAt');
+  
+  if (!hasCreatedAt) {
+    try {
+      db.run(`ALTER TABLE yt_partners ADD COLUMN createdAt TEXT`);
+      saveDB();
+    } catch (e) {
+      console.log('createdAt column migration error:', e.message);
+    }
+  }
+
+  // Add sortOrder column to yt_partners if it doesn't exist
+  const hasSortOrder = ytPartnersColumns.length > 0 && 
+    ytPartnersColumns[0].values.some(col => col[1] === 'sortOrder');
+  
+  if (!hasSortOrder) {
+    try {
+      db.run(`ALTER TABLE yt_partners ADD COLUMN sortOrder INTEGER DEFAULT 0`);
+      saveDB();
+    } catch (e) {
+      console.log('sortOrder column migration error:', e.message);
+    }
+  }
+  
+  // Update existing records without createdAt
+  try {
+    const currentTime = new Date().toISOString();
+    db.run(`UPDATE yt_partners SET createdAt = ? WHERE createdAt IS NULL`, [currentTime]);
+    saveDB();
+  } catch (e) {
+    console.log('createdAt update error:', e.message);
+  }
+
+  // Update existing records without sortOrder
+  try {
+    db.run(`UPDATE yt_partners SET sortOrder = id WHERE sortOrder IS NULL OR sortOrder = 0`);
+    saveDB();
+  } catch (e) {
+    console.log('sortOrder update error:', e.message);
+  }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS site_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE NOT NULL,
+      value TEXT NOT NULL
+    )
+  `);
+
+  // Initialize YT Partners visibility setting
+  const ytSettingExists = db.exec("SELECT * FROM site_settings WHERE key = 'yt_partners_enabled'");
+  if (ytSettingExists.length === 0 || ytSettingExists[0].values.length === 0) {
+    db.run("INSERT INTO site_settings (key, value) VALUES (?, ?)", ['yt_partners_enabled', '0']);
+  }
 
   // Initialize location settings
   const locationsExist = db.exec("SELECT * FROM location_settings");
@@ -132,13 +206,15 @@ async function initDB() {
   const plansExist = db.exec("SELECT * FROM paid_plans");
   if (plansExist.length === 0 || plansExist[0].values.length === 0) {
     const plans = [
-      { name: 'Bronze Plan', ram: '2GB', cpu: '100%', storage: '10 GB SSD', location: 'UAE', price: '240 PKR', order: 1 },
-      { name: 'Silver Plan', ram: '4GB', cpu: '150%', storage: '20 GB SSD', location: 'UAE', price: '480 PKR', order: 2 },
-      { name: 'Gold Plan', ram: '8GB', cpu: '250%', storage: '30 GB SSD', location: 'UAE', price: '960 PKR', order: 3 },
-      { name: 'Platinum Plan', ram: '10GB', cpu: '300%', storage: '40 GB SSD', location: 'UAE', price: '1200 PKR', order: 4 },
-      { name: 'Emerald Plan', ram: '12GB', cpu: '350%', storage: '50 GB SSD', location: 'UAE', price: '1440 PKR', order: 5 },
-      { name: 'Diamond Plan', ram: '16GB', cpu: '500%', storage: '80 GB SSD', location: 'UAE', price: '1920 PKR', order: 6 },
-      { name: 'Ruby Plan', ram: '32GB', cpu: '1000%', storage: '100 GB SSD', location: 'UAE', price: '3840 PKR', order: 7 }
+      { name: 'Bronze Plan', ram: '2GB', cpu: '100%', storage: '10 GB SSD', location: 'UAE', price: '200 PKR', order: 1 },
+      { name: 'Silver Plan', ram: '4GB', cpu: '150%', storage: '20 GB SSD', location: 'UAE', price: '400 PKR', order: 2 },
+      { name: 'Gold Plan', ram: '8GB', cpu: '250%', storage: '30 GB SSD', location: 'UAE', price: '600 PKR', order: 3 },
+      { name: 'Platinum Plan', ram: '10GB', cpu: '300%', storage: '40 GB SSD', location: 'UAE', price: '800 PKR', order: 4 },
+      { name: 'Emerald Plan', ram: '12GB', cpu: '350%', storage: '50 GB SSD', location: 'UAE', price: '1200 PKR', order: 5 },
+      { name: 'Amethyst Plan', ram: '14GB', cpu: '400%', storage: '60 GB SSD', location: 'UAE', price: '3600 PKR', order: 6 },
+      { name: 'Diamond Plan', ram: '16GB', cpu: '500%', storage: '80 GB SSD', location: 'UAE', price: '1600 PKR', order: 7 },
+      { name: 'Ruby Plan', ram: '32GB', cpu: '1000%', storage: '100 GB SSD', location: 'UAE', price: '3200 PKR', order: 8 },
+      { name: 'Black Ruby Plan', ram: '34GB', cpu: '2000%', storage: '200 GB SSD', location: 'UAE', price: '3400 PKR', order: 9 }
     ];
     plans.forEach(p => {
       db.run("INSERT INTO paid_plans (name, ram, cpu, storage, location, price, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?)",

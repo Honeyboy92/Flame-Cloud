@@ -10,9 +10,10 @@ router.get('/messages/:otherUserId', authMiddleware, (req, res) => {
   const otherUserId = req.params.otherUserId;
   
   const messages = prepare(`
-    SELECT * FROM chat_messages 
-    WHERE (senderId = ? AND receiverId = ?) OR (senderId = ? AND receiverId = ?)
-    ORDER BY createdAt ASC
+    SELECT m.*, u.avatar as senderAvatar FROM chat_messages m
+    LEFT JOIN users u ON m.senderId = u.id
+    WHERE (m.senderId = ? AND m.receiverId = ?) OR (m.senderId = ? AND m.receiverId = ?)
+    ORDER BY m.createdAt ASC
   `).all(userId, otherUserId, otherUserId, userId);
   
   // Mark messages as read
@@ -47,7 +48,7 @@ router.get('/users', authMiddleware, (req, res) => {
   }
   
   const users = prepare(`
-    SELECT u.id, u.username, u.email,
+    SELECT u.id, u.username, u.email, u.avatar,
     (SELECT COUNT(*) FROM chat_messages WHERE senderId = u.id AND receiverId = ? AND isRead = 0) as unreadCount
     FROM users u WHERE u.isAdmin = 0 ORDER BY u.username
   `).all(req.user.id);

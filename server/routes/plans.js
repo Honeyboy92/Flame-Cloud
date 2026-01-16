@@ -74,4 +74,16 @@ router.post('/claim-free', authMiddleware, (req, res) => {
   res.json({ success: true, message: 'Free plan claimed successfully!' });
 });
 
+// Public YT Partners
+router.get('/yt-partners', (req, res) => {
+  const partners = prepare('SELECT * FROM yt_partners ORDER BY sortOrder ASC, createdAt DESC, id DESC').all();
+  res.json(partners);
+});
+
+// Public site settings
+router.get('/settings/:key', (req, res) => {
+  const setting = prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
+  res.json(setting || { key: req.params.key, value: '0' });
+});
+
 module.exports = router;

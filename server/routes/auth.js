@@ -31,7 +31,7 @@ router.post('/login', (req, res) => {
 });
 
 router.get('/me', authMiddleware, (req, res) => {
-  const user = prepare('SELECT id, username, email, isAdmin, createdAt FROM users WHERE id = ?').get(req.user.id);
+  const user = prepare('SELECT id, username, email, isAdmin, avatar, createdAt FROM users WHERE id = ?').get(req.user.id);
   res.json(user);
 });
 
@@ -70,6 +70,35 @@ router.put('/update-password', authMiddleware, (req, res) => {
     res.json({ message: 'Password updated successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update password' });
+  }
+});
+
+// Update username
+router.put('/update-username', authMiddleware, (req, res) => {
+  const { username } = req.body;
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+  try {
+    const existing = prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, req.user.id);
+    if (existing) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
+    prepare('UPDATE users SET username = ? WHERE id = ?').run(username, req.user.id);
+    res.json({ message: 'Username updated successfully', username });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update username' });
+  }
+});
+
+// Update avatar
+router.put('/update-avatar', authMiddleware, (req, res) => {
+  const { avatar } = req.body;
+  try {
+    prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar || null, req.user.id);
+    res.json({ message: 'Avatar updated successfully', avatar });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update avatar' });
   }
 });
 

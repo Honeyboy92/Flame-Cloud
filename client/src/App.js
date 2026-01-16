@@ -4,11 +4,13 @@ import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import About from './pages/About';
 import PaidPlans from './pages/PaidPlans';
+import YTPartners from './pages/YTPartners';
 import Features from './pages/Features';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
+import Chat from './pages/Chat';
 
 function App() {
   const { user, loading } = useAuth();
@@ -17,35 +19,28 @@ function App() {
     return (
       <div className="auth-container">
         <div className="card" style={{textAlign: 'center', padding: '60px'}}>
-          <div style={{fontSize: '3rem', marginBottom: '20px'}}>🔥</div>
+          <img src="/logo.png" alt="Flame Cloud" style={{width: '80px', height: '80px', marginBottom: '20px'}} />
           <p>Loading Flame Cloud...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
-
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/signup" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="about" element={<About />} />
         <Route path="paid-plans" element={<PaidPlans />} />
+        <Route path="yt-partners" element={<YTPartners />} />
         <Route path="features" element={<Features />} />
-        <Route path="admin" element={user.isAdmin ? <AdminPanel /> : <Navigate to="/dashboard" />} />
+        <Route path="chat" element={user ? <Chat /> : <Navigate to="/login" />} />
+        <Route path="admin" element={user?.isAdmin ? <AdminPanel /> : <Navigate to="/dashboard" />} />
       </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

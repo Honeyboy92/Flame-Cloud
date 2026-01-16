@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const PaidPlans = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -15,18 +18,39 @@ const PaidPlans = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [locationSettings, setLocationSettings] = useState([]);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customPlan, setCustomPlan] = useState({ ram: 1, cpu: 50, ssd: 5 });
+  const [discordMembers, setDiscordMembers] = useState('500+');
+  const [showFlags, setShowFlags] = useState(false);
+
+  // Custom Plan Pricing
+  const RAM_PRICE = 50; // PKR per GB
+  const SSD_PRICE = 4;  // PKR per GB
+  const CPU_PRICE = 1; // PKR per 1%
+
+  const calculateCustomPrice = () => {
+    return Math.round((customPlan.ram * RAM_PRICE) + (customPlan.ssd * SSD_PRICE) + (customPlan.cpu * CPU_PRICE));
+  };
 
   useEffect(() => {
     axios.get('/api/plans/paid').then(res => setPlans(res.data));
     axios.get('/api/plans/locations').then(res => setLocationSettings(res.data));
+    axios.get('/api/plans/settings/discord_members').then(res => {
+      if (res.data.value) setDiscordMembers(res.data.value);
+    }).catch(() => {});
   }, []);
 
   const isLocationAvailable = (location) => {
     const loc = locationSettings.find(l => l.location === location);
-    return loc ? loc.isAvailable : false;
+    return loc ? Boolean(loc.isAvailable) : false;
   };
 
   const handlePlanClick = (plan) => {
+    // Check if user is logged in
+    if (!user) {
+      navigate('/signup');
+      return;
+    }
     // Check if location is not available - show Coming Soon
     if (!isLocationAvailable(plan.location)) {
       setSelectedPlan(plan);
@@ -83,6 +107,8 @@ const PaidPlans = () => {
 
   const getPlanIcon = (name) => {
     const lowerName = name.toLowerCase();
+    if (lowerName.includes('black ruby')) return '/black-ruby.png';
+    if (lowerName.includes('amethyst')) return '/amethyst.png';
     if (lowerName.includes('bronze')) return '/bronze.png';
     if (lowerName.includes('silver')) return '/silver.png';
     if (lowerName.includes('gold')) return '/gold.png';
@@ -95,6 +121,8 @@ const PaidPlans = () => {
 
   const getRankStyle = (name) => {
     const lowerName = name.toLowerCase();
+    if (lowerName.includes('black ruby')) return { bg: 'linear-gradient(135deg, #ff0040, #8b0000, #2d0a0a)' };
+    if (lowerName.includes('amethyst')) return { bg: 'linear-gradient(135deg, #9b59b6, #8e44ad, #6c3483)' };
     if (lowerName.includes('ruby')) return { bg: 'linear-gradient(135deg, #ef4444, #dc2626)' };
     if (lowerName.includes('diamond')) return { bg: 'linear-gradient(135deg, #60a5fa, #3b82f6)' };
     if (lowerName.includes('emerald')) return { bg: 'linear-gradient(135deg, #34d399, #10b981)' };
@@ -121,83 +149,189 @@ const PaidPlans = () => {
             <img src="/logo.png" alt="" className="flags-logo-img" />
           </div>
 
-          {/* Location Flags First */}
-          <h3 style={{textAlign: 'center', marginBottom: '30px', color: 'var(--text-primary)', position: 'relative', zIndex: 1}}>🌍 Choose Server Location</h3>
-          <div className="location-flags">
-            <div className="location-flag" onClick={() => setSelectedLocation('UAE')}>
-              <img src="/uae-flag.png" alt="UAE" className="flag-img" />
-              <span className="flag-name">UAE</span>
-              {isLocationAvailable('UAE') && <span className="flag-status available">Available</span>}
-              {!isLocationAvailable('UAE') && <span className="flag-status coming-soon">Coming Soon</span>}
+          {/* Choose Location Button - Shows first */}
+          {!showFlags && (
+            <div style={{textAlign: 'center', marginBottom: '40px', position: 'relative', zIndex: 1}}>
+              <button 
+                onClick={() => setShowFlags(true)}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981, #34d399, #fff)',
+                  color: '#000',
+                  padding: '18px 50px',
+                  borderRadius: '50px',
+                  border: 'none',
+                  fontSize: '1.2rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 30px rgba(16, 185, 129, 0.4)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                🌍 Choose Your Location
+              </button>
             </div>
-            <div className="location-flag" onClick={() => setSelectedLocation('Germany')}>
-              <img src="/germany-flag.png" alt="Germany" className="flag-img" />
-              <span className="flag-name">Germany</span>
-              {isLocationAvailable('Germany') && <span className="flag-status available">Available</span>}
-              {!isLocationAvailable('Germany') && <span className="flag-status coming-soon">Coming Soon</span>}
-            </div>
-            <div className="location-flag" onClick={() => setSelectedLocation('Singapore')}>
-              <img src="/singapore-flag.png" alt="Singapore" className="flag-img" />
-              <span className="flag-name">Singapore</span>
-              {isLocationAvailable('Singapore') && <span className="flag-status available">Available</span>}
-              {!isLocationAvailable('Singapore') && <span className="flag-status coming-soon">Coming Soon</span>}
-            </div>
-          </div>
+          )}
+
+          {/* Location Flags - Shows after button click */}
+          {showFlags && (
+            <>
+              <h3 style={{textAlign: 'center', marginBottom: '40px', color: 'var(--text-primary)', position: 'relative', zIndex: 1, fontSize: '1.4rem'}}>🌍 Select Server Location</h3>
+              <div style={{display: 'flex', justifyContent: 'center', gap: '80px', flexWrap: 'wrap', position: 'relative', zIndex: 1}}>
+                {/* Germany */}
+                <div 
+                  onClick={() => setSelectedLocation('Germany')}
+                  style={{cursor: 'pointer', textAlign: 'center', position: 'relative'}}
+                >
+                  {!isLocationAvailable('Germany') && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-25px',
+                      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                      color: '#000',
+                      padding: '8px 16px',
+                      borderRadius: '14px',
+                      fontSize: '0.95rem',
+                      fontWeight: '700',
+                      zIndex: 10
+                    }}>Soon</span>
+                  )}
+                  <img src="/germany-flag.png" alt="Germany" style={{width: '160px', height: '110px', borderRadius: '12px'}} />
+                  <p style={{color: 'var(--text-primary)', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>Germany</p>
+                </div>
+
+                {/* UAE */}
+                <div 
+                  onClick={() => setSelectedLocation('UAE')}
+                  style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transform: 'scale(1.15)'}}
+                >
+                  {!isLocationAvailable('UAE') && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-25px',
+                      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                      color: '#000',
+                      padding: '8px 16px',
+                      borderRadius: '14px',
+                      fontSize: '0.95rem',
+                      fontWeight: '700',
+                      zIndex: 10
+                    }}>Soon</span>
+                  )}
+                  <img src="/uae-flag.png" alt="UAE" style={{width: '170px', height: '120px', borderRadius: '12px'}} />
+                  <p style={{color: 'var(--text-primary)', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>UAE</p>
+                </div>
+
+                {/* Singapore */}
+                <div 
+                  onClick={() => setSelectedLocation('Singapore')}
+                  style={{cursor: 'pointer', textAlign: 'center', position: 'relative'}}
+                >
+                  {!isLocationAvailable('Singapore') && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-25px',
+                      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                      color: '#000',
+                      padding: '8px 16px',
+                      borderRadius: '14px',
+                      fontSize: '0.95rem',
+                      fontWeight: '700',
+                      zIndex: 10
+                    }}>Soon</span>
+                  )}
+                  <img src="/singapore-flag.png" alt="Singapore" style={{width: '160px', height: '110px', borderRadius: '12px'}} />
+                  <p style={{color: 'var(--text-primary)', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>Singapore</p>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Quick Actions */}
           <div className="quick-actions-grid" style={{marginTop: '50px', marginBottom: '40px', position: 'relative', zIndex: 1}}>
-            <div className="quick-action-card" onClick={() => setSelectedLocation('UAE')} style={{cursor: 'pointer'}}>
-              <div className="quick-action-icon" style={{background: 'linear-gradient(135deg, #ef4444, #f59e0b)'}}>🚀</div>
-              <h4>Get a Server</h4>
-              <p>Browse our premium hosting plans</p>
+            <div className="quick-action-card">
+              <div className="quick-action-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#FF2E00" strokeWidth="1.5">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </div>
+              <h4>99.9% Uptime</h4>
+              <p>Guaranteed server availability</p>
             </div>
             
-            <a href="https://dash.diamondnode.qzz.io" target="_blank" rel="noopener noreferrer" className="quick-action-card">
-              <div className="quick-action-icon" style={{background: 'linear-gradient(135deg, #10b981, #059669)'}}>🎮</div>
-              <h4>Game Panel</h4>
-              <p>Manage your servers</p>
-            </a>
+            <div className="quick-action-card">
+              <div className="quick-action-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#FF2E00" strokeWidth="1.5">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <h4>24/7 Support</h4>
+              <p>Always here to help you</p>
+            </div>
             
-            <a href="/features" className="quick-action-card">
-              <div className="quick-action-icon" style={{background: 'linear-gradient(135deg, #fbbf24, #f59e0b)'}}>⭐</div>
-              <h4>Features</h4>
-              <p>See what we offer</p>
-            </a>
+            <div className="quick-action-card">
+              <div className="quick-action-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#FF2E00" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
+              <h4>Global Network</h4>
+              <p>Servers worldwide</p>
+            </div>
             
             <a href="https://discord.gg/WXWYz5ywTU" target="_blank" rel="noopener noreferrer" className="quick-action-card">
-              <div className="quick-action-icon" style={{background: 'linear-gradient(135deg, #5865F2, #4752c4)'}}>💬</div>
-              <h4>Discord</h4>
+              <div className="quick-action-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#FF2E00" strokeWidth="1.5">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                </svg>
+              </div>
+              <h4>{discordMembers} Members</h4>
               <p>Join our community</p>
             </a>
           </div>
 
           {/* Why Choose Section */}
           <div className="card" style={{marginBottom: '40px', position: 'relative', zIndex: 1}}>
-            <h3>🔥 Why Choose Flame Cloud?</h3>
+            <h3 style={{display: 'flex', alignItems: 'center', gap: '10px'}}><img src="/logo.png" alt="" style={{width: '28px', height: '28px'}} /> Why Choose Flame Cloud?</h3>
             <div className="features-mini-grid">
               <div className="feature-mini">
-                <span className="feature-mini-icon">⚡</span>
+                <span className="feature-mini-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </span>
                 <div>
                   <h5>Instant Setup</h5>
                   <p>Server ready in minutes</p>
                 </div>
               </div>
               <div className="feature-mini">
-                <span className="feature-mini-icon">🛡️</span>
+                <span className="feature-mini-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </span>
                 <div>
                   <h5>DDoS Protection</h5>
                   <p>Enterprise-grade security</p>
                 </div>
               </div>
               <div className="feature-mini">
-                <span className="feature-mini-icon">💾</span>
+                <span className="feature-mini-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/></svg>
+                </span>
                 <div>
                   <h5>NVMe Storage</h5>
                   <p>Lightning fast SSDs</p>
                 </div>
               </div>
               <div className="feature-mini">
-                <span className="feature-mini-icon">🌍</span>
+                <span className="feature-mini-icon" style={{background: 'transparent', border: '2px solid #FF2E00'}}>
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </span>
                 <div>
                   <h5>UAE Servers</h5>
                   <p>Low latency gaming</p>
@@ -252,19 +386,19 @@ const PaidPlans = () => {
                             {plan.name}
                           </h3>
                           <div className="spec">
-                            <span className="spec-label"><span className="spec-emoji ram-emoji">🔲</span> RAM</span>
+                            <span className="spec-label"><span className="spec-emoji ram-emoji">💾</span> RAM</span>
                             <span className="spec-value">{plan.ram}</span>
                           </div>
                           <div className="spec">
-                            <span className="spec-label"><span className="spec-emoji cpu-emoji">🔳</span> CPU</span>
+                            <span className="spec-label"><span className="spec-emoji cpu-emoji">⚙️</span> CPU</span>
                             <span className="spec-value">{plan.cpu}</span>
                           </div>
                           <div className="spec">
-                            <span className="spec-label"><span className="spec-emoji storage-emoji">💾</span> Storage</span>
+                            <span className="spec-label"><span className="spec-emoji storage-emoji">💿</span> Storage</span>
                             <span className="spec-value">{plan.storage}</span>
                           </div>
                           <div className="spec">
-                            <span className="spec-label"><span className="spec-emoji location-emoji">📍</span> Location</span>
+                            <span className="spec-label"><span className="spec-emoji location-emoji">🌍</span> Location</span>
                             <span className="spec-value">{plan.location}</span>
                           </div>
                           <div className="spec">
@@ -285,28 +419,57 @@ const PaidPlans = () => {
           ) : (
             <>
               <div className="plans-grid">
-                {plans.map(plan => {
+                {plans.filter(p => p.location === selectedLocation).map(plan => {
                   const style = getRankStyle(plan.name);
                   return (
-                    <div key={plan.id} className="plan-card" onClick={() => handlePlanClick(plan)} style={{cursor: 'pointer'}}>
+                    <div key={plan.id} className="plan-card" onClick={() => handlePlanClick(plan)} style={{cursor: 'pointer', position: 'relative'}}>
+                      {plan.discount > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '15px',
+                          right: '15px',
+                          background: 'linear-gradient(135deg, #00C853, #00E676, #69F0AE)',
+                          color: '#000',
+                          padding: '8px 14px',
+                          borderRadius: '20px',
+                          fontWeight: '800',
+                          fontSize: '0.9rem',
+                          boxShadow: '0 4px 15px rgba(0, 200, 83, 0.5)',
+                          zIndex: 10
+                        }}>
+                          {plan.discount}% OFF
+                        </div>
+                      )}
                       <h3 style={{background: style.bg, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>
-                        {getPlanIcon(plan.name) && <img src={getPlanIcon(plan.name)} alt="" className="plan-icon" />}
+                        {getPlanIcon(plan.name) && (
+                          <img 
+                            src={getPlanIcon(plan.name)} 
+                            alt="" 
+                            className="plan-icon" 
+                            style={plan.name.toLowerCase().includes('black ruby') ? {
+                              filter: 'drop-shadow(0 0 15px #ff0040) drop-shadow(0 0 30px #ff0040) drop-shadow(0 0 45px #8b0000)',
+                              animation: 'blackRubyGlow 2s ease-in-out infinite alternate',
+                              width: '42px',
+                              height: '42px'
+                            } : {}}
+                          />
+                        )}
                         {plan.name}
                       </h3>
                       <div className="spec">
-                        <span className="spec-label"><span className="spec-emoji ram-emoji">🔲</span> RAM</span>
+                        <span className="spec-label"><span className="spec-emoji ram-emoji">💾</span> RAM</span>
                         <span className="spec-value">{plan.ram}</span>
                       </div>
                       <div className="spec">
-                        <span className="spec-label"><span className="spec-emoji cpu-emoji">🔳</span> CPU</span>
+                        <span className="spec-label"><span className="spec-emoji cpu-emoji">⚙️</span> CPU</span>
                         <span className="spec-value">{plan.cpu}</span>
                       </div>
                       <div className="spec">
-                        <span className="spec-label"><span className="spec-emoji storage-emoji">💾</span> Storage</span>
+                        <span className="spec-label"><span className="spec-emoji storage-emoji">💿</span> Storage</span>
                         <span className="spec-value">{plan.storage}</span>
                       </div>
                       <div className="spec">
-                        <span className="spec-label"><span className="spec-emoji location-emoji">📍</span> Location</span>
+                        <span className="spec-label"><span className="spec-emoji location-emoji">🌍</span> Location</span>
                         <span className="spec-value">{plan.location}</span>
                       </div>
                       <div className="spec">
@@ -320,6 +483,162 @@ const PaidPlans = () => {
                     </div>
                   );
                 })}
+
+              </div>
+
+              {/* Flame Custom Plan Card - Before Premium Plans Include */}
+              <div style={{marginTop: '30px', marginBottom: '30px'}}>
+                <p style={{textAlign: 'center', color: '#FF6A00', marginBottom: '15px', fontSize: '0.95rem', textShadow: '0 0 10px rgba(255, 106, 0, 0.8), 0 0 20px rgba(255, 106, 0, 0.5), 0 0 30px rgba(255, 46, 0, 0.3)', fontWeight: '600'}}>
+                  ⚠️ Alert: If you want to make custom plan, the price will be higher than normal plans
+                </p>
+                <div 
+                  className="plan-card" 
+                  style={{
+                    position: 'relative',
+                    background: 'linear-gradient(165deg, rgba(255, 46, 0, 0.15), rgba(255, 106, 0, 0.1), rgba(26, 26, 46, 0.95))',
+                    border: '2px solid rgba(255, 106, 0, 0.5)',
+                    width: '100%',
+                    maxWidth: '100%',
+                    padding: '25px 30px'
+                  }}
+                >
+                  <h3 style={{background: 'linear-gradient(135deg, #FF2E00, #FF6A00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', fontSize: '1.3rem'}}>
+                    <img src="/logo.png" alt="" style={{width: '28px', height: '28px'}} />
+                    Custom Flame Plan
+                    <span style={{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '400', marginLeft: '10px'}}>- Create your own Flame Plan</span>
+                  </h3>
+                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', alignItems: 'center'}}>
+                    {/* RAM Input */}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <span style={{background: 'transparent', border: '2px solid #FF2E00', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/></svg>
+                      </span>
+                      <div style={{flex: 1}}>
+                        <h5 style={{margin: 0, color: 'var(--text-primary)', fontSize: '0.9rem'}}>RAM (GB)</h5>
+                        <input 
+                          type="text" 
+                          value={customPlan.ram}
+                          onClick={(e) => { e.stopPropagation(); if(customPlan.ram === 0) e.target.select(); }}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setCustomPlan({...customPlan, ram: val === '' ? 0 : parseInt(val)});
+                          }}
+                          onBlur={(e) => {
+                            if (customPlan.ram < 1) setCustomPlan({...customPlan, ram: 1});
+                          }}
+                          style={{
+                            width: '80px',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 106, 0, 0.3)',
+                            background: 'rgba(0,0,0,0.3)',
+                            color: 'var(--primary-light)',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            outline: 'none',
+                            marginTop: '5px'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* CPU Input */}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <span style={{background: 'transparent', border: '2px solid #FF2E00', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+                      </span>
+                      <div style={{flex: 1}}>
+                        <h5 style={{margin: 0, color: 'var(--text-primary)', fontSize: '0.9rem'}}>CPU (%)</h5>
+                        <input 
+                          type="text" 
+                          value={customPlan.cpu}
+                          onClick={(e) => { e.stopPropagation(); if(customPlan.cpu === 0) e.target.select(); }}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setCustomPlan({...customPlan, cpu: val === '' ? 0 : parseInt(val)});
+                          }}
+                          onBlur={(e) => {
+                            if (customPlan.cpu < 50) setCustomPlan({...customPlan, cpu: 50});
+                          }}
+                          style={{
+                            width: '80px',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 106, 0, 0.3)',
+                            background: 'rgba(0,0,0,0.3)',
+                            color: 'var(--primary-light)',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            outline: 'none',
+                            marginTop: '5px'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* SSD Input */}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <span style={{background: 'transparent', border: '2px solid #FF2E00', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF2E00" strokeWidth="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/></svg>
+                      </span>
+                      <div style={{flex: 1}}>
+                        <h5 style={{margin: 0, color: 'var(--text-primary)', fontSize: '0.9rem'}}>SSD (GB)</h5>
+                        <input 
+                          type="text" 
+                          value={customPlan.ssd}
+                          onClick={(e) => { e.stopPropagation(); if(customPlan.ssd === 0) e.target.select(); }}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setCustomPlan({...customPlan, ssd: val === '' ? 0 : parseInt(val)});
+                          }}
+                          onBlur={(e) => {
+                            if (customPlan.ssd < 5) setCustomPlan({...customPlan, ssd: 5});
+                          }}
+                          style={{
+                            width: '80px',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 106, 0, 0.3)',
+                            background: 'rgba(0,0,0,0.3)',
+                            color: 'var(--primary-light)',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            outline: 'none',
+                            marginTop: '5px'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Order Button with Price */}
+                    <div 
+                      style={{display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', background: 'linear-gradient(135deg, rgba(255, 46, 0, 0.2), rgba(255, 106, 0, 0.1))', padding: '15px 20px', borderRadius: '16px', border: '2px solid rgba(255, 106, 0, 0.5)'}}
+                      onClick={() => {
+                        if (!user) {
+                          navigate('/signup');
+                          return;
+                        }
+                        setSelectedPlan({
+                          name: 'Custom Flame Plan',
+                          ram: `${customPlan.ram} GB`,
+                          cpu: `${customPlan.cpu}%`,
+                          storage: `${customPlan.ssd} GB SSD`,
+                          price: `${calculateCustomPrice()} PKR/month`,
+                          location: selectedLocation
+                        });
+                        setShowModal(true);
+                      }}
+                    >
+                      <span style={{background: 'linear-gradient(135deg, #FF2E00, #FF6A00)', border: 'none', borderRadius: '14px', padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#fff" strokeWidth="1.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                      </span>
+                      <div>
+                        <h5 style={{margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: '700'}}>Order Now</h5>
+                        <p style={{margin: '5px 0 0 0', color: 'var(--success)', fontWeight: '800', fontSize: '1.4rem'}}>{calculateCustomPrice()} PKR</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="extra-info">
@@ -376,15 +695,47 @@ const PaidPlans = () => {
                       💳 Select Payment Method
                     </p>
                     
+                    {/* UBL Bank - Top with Green Gradient */}
+                    <div style={{marginBottom: '20px'}}>
+                      <button 
+                        className="payment-btn ubl"
+                        onClick={() => setSelectedPaymentMethod('UBLBank')}
+                        style={{
+                          width: '100%',
+                          padding: '24px 32px',
+                          background: 'linear-gradient(135deg, #00C853, #00E676, #69F0AE)',
+                          border: 'none',
+                          borderRadius: '20px',
+                          color: '#000',
+                          fontSize: '1.2rem',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                          boxShadow: '0 8px 25px rgba(0, 200, 83, 0.5)'
+                        }}
+                      >
+                        <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                          <img src="/ubl.png" alt="Bank Transfer" style={{width: '40px', height: '40px', objectFit: 'contain'}} />
+                          <span>Bank Transfer</span>
+                        </div>
+                        <span style={{fontSize: '0.85rem', fontWeight: '600', opacity: 0.8}}>All Pakistan Bank Transfers Available</span>
+                      </button>
+                    </div>
+
                     {/* Row 1 - Mobile Wallets */}
                     <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px'}}>
                       <button 
-                        className="payment-btn easypaisa"
-                        onClick={() => setSelectedPaymentMethod('EasyPaisa')}
+                        className="payment-btn nayapay"
+                        onClick={() => setSelectedPaymentMethod('NayaPaisa')}
                         style={{
                           width: '100%',
                           padding: '16px 24px',
-                          background: 'linear-gradient(135deg, #00c853, #009624)',
+                          background: 'linear-gradient(135deg, #FF6A00, #FF8C00, #FFA500)',
                           border: 'none',
                           borderRadius: '50px',
                           color: '#fff',
@@ -396,11 +747,11 @@ const PaidPlans = () => {
                           justifyContent: 'center',
                           gap: '12px',
                           transition: 'transform 0.2s, box-shadow 0.2s',
-                          boxShadow: '0 4px 15px rgba(0, 200, 83, 0.4)'
+                          boxShadow: '0 4px 15px rgba(255, 106, 0, 0.4)'
                         }}
                       >
-                        <img src="/easypaisa.png" alt="EasyPaisa" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
-                        EasyPaisa
+                        <img src="/nayapay.png" alt="NayaPay" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                        NayaPay
                       </button>
                       
                       <button 
@@ -429,12 +780,12 @@ const PaidPlans = () => {
                       </button>
                       
                       <button 
-                        className="payment-btn nayapay"
-                        onClick={() => setSelectedPaymentMethod('NayaPaisa')}
+                        className="payment-btn easypaisa"
+                        onClick={() => setSelectedPaymentMethod('EasyPaisa')}
                         style={{
                           width: '100%',
                           padding: '16px 24px',
-                          background: 'linear-gradient(135deg, #10b981, #059669)',
+                          background: 'linear-gradient(135deg, #00c853, #009624)',
                           border: 'none',
                           borderRadius: '50px',
                           color: '#fff',
@@ -446,11 +797,11 @@ const PaidPlans = () => {
                           justifyContent: 'center',
                           gap: '12px',
                           transition: 'transform 0.2s, box-shadow 0.2s',
-                          boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)'
+                          boxShadow: '0 4px 15px rgba(0, 200, 83, 0.4)'
                         }}
                       >
-                        <img src="/nayapay.png" alt="NayaPay" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
-                        NayaPay
+                        <img src="/easypaisa.png" alt="EasyPaisa" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                        EasyPaisa
                       </button>
                     </div>
                     
@@ -479,31 +830,6 @@ const PaidPlans = () => {
                       >
                         <img src="/jsbank.png" alt="JS Bank" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
                         JS Bank
-                      </button>
-                      
-                      <button 
-                        className="payment-btn ubl"
-                        onClick={() => setSelectedPaymentMethod('UBLBank')}
-                        style={{
-                          width: '100%',
-                          padding: '16px 24px',
-                          background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
-                          border: 'none',
-                          borderRadius: '50px',
-                          color: '#fff',
-                          fontSize: '1rem',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '12px',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          boxShadow: '0 4px 15px rgba(220, 38, 38, 0.4)'
-                        }}
-                      >
-                        <img src="/ubl.png" alt="UBL Bank" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
-                        UBL Bank
                       </button>
                       
                       <a 
@@ -544,13 +870,20 @@ const PaidPlans = () => {
                     <button 
                       onClick={() => setSelectedPaymentMethod(null)}
                       style={{
-                        background: 'transparent',
+                        background: 'linear-gradient(135deg, #FF2E00 0%, #FF6A00 50%, #FF2E00 100%)',
                         border: 'none',
-                        color: 'var(--text-muted)',
+                        color: '#fff',
                         cursor: 'pointer',
                         marginBottom: '16px',
-                        fontSize: '0.95rem'
+                        fontSize: '0.95rem',
+                        padding: '12px 24px',
+                        borderRadius: '12px',
+                        fontWeight: '700',
+                        boxShadow: '0 4px 20px rgba(255, 70, 0, 0.4)',
+                        transition: 'all 0.3s ease'
                       }}
+                      onMouseEnter={(e) => e.target.style.boxShadow = '0 8px 35px rgba(255, 70, 0, 0.7), 0 0 20px rgba(255, 106, 0, 0.5)'}
+                      onMouseLeave={(e) => e.target.style.boxShadow = '0 4px 20px rgba(255, 70, 0, 0.4)'}
                     >
                       ← Change Payment Method
                     </button>
@@ -632,18 +965,42 @@ const PaidPlans = () => {
                       
                       {selectedPaymentMethod === 'UBLBank' && (
                         <>
-                          <div style={{background: 'rgba(220, 38, 38, 0.1)', padding: '24px', borderRadius: '16px', marginBottom: '16px', border: '1px solid rgba(220, 38, 38, 0.3)'}}>
-                            <img src="/ubl.png" alt="UBL Bank" style={{width: '60px', height: '60px', marginBottom: '16px', objectFit: 'contain'}} />
-                            <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px'}}>
-                              Scan this QR to send money
+                          <div style={{background: 'linear-gradient(135deg, rgba(0, 200, 83, 0.15), rgba(0, 230, 118, 0.1))', padding: '28px', borderRadius: '20px', marginBottom: '16px', border: '2px solid rgba(0, 200, 83, 0.4)'}}>
+                            <p style={{color: '#00E676', fontSize: '1rem', marginBottom: '20px', fontWeight: '700'}}>
+                              🏦 All Pakistan Bank Transfers Available
                             </p>
-                            <div style={{background: '#fff', padding: '16px', borderRadius: '16px', display: 'inline-block', marginBottom: '16px'}}>
-                              <img src="/ubl-qr.png" alt="UBL QR Code" style={{width: '180px', height: '180px', objectFit: 'contain'}} />
-                            </div>
-                            <p style={{color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.2rem', marginBottom: '8px'}}>
+                            
+                            {/* Scan QR Code Button */}
+                            <button
+                              onClick={() => setShowQRModal(true)}
+                              style={{
+                                width: '100%',
+                                padding: '16px 24px',
+                                background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FFD000)',
+                                border: 'none',
+                                borderRadius: '14px',
+                                color: '#fff',
+                                fontSize: '1.1rem',
+                                fontWeight: '800',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '12px',
+                                marginBottom: '20px',
+                                boxShadow: '0 6px 25px rgba(255, 70, 0, 0.5)',
+                                transition: 'all 0.3s ease'
+                              }}
+                              onMouseEnter={(e) => e.target.style.boxShadow = '0 10px 40px rgba(255, 70, 0, 0.7)'}
+                              onMouseLeave={(e) => e.target.style.boxShadow = '0 6px 25px rgba(255, 70, 0, 0.5)'}
+                            >
+                              📱 Scan QR Code
+                            </button>
+                            
+                            <p style={{color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.3rem', marginBottom: '8px'}}>
                               Adeel Mubarik - 5186
                             </p>
-                            <p style={{color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '12px'}}>
+                            <p style={{color: '#00E676', fontSize: '0.95rem', marginTop: '12px', fontWeight: '600'}}>
                               UBL Digital Account
                             </p>
                           </div>
@@ -700,7 +1057,7 @@ const PaidPlans = () => {
       {showComingSoonModal && selectedPlan && (
         <div className="modal-overlay" onClick={() => setShowComingSoonModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '450px', textAlign: 'center'}}>
-            <div style={{fontSize: '5rem', marginBottom: '20px'}}>🚀</div>
+            <div style={{fontSize: '5rem', marginBottom: '20px', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '3px solid #FF2E00', borderRadius: '20px', boxShadow: '0 0 20px rgba(255, 46, 0, 0.4)', margin: '0 auto 20px'}}>🚀</div>
             <h2 style={{background: 'linear-gradient(135deg, #FF6A00, #FFD000)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '16px'}}>Coming Soon!</h2>
             
             <div style={{background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), rgba(255, 46, 0, 0.05))', padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid var(--glass-border)'}}>
@@ -718,6 +1075,273 @@ const PaidPlans = () => {
                 Check UAE Plans
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Plan Modal */}
+      {showCustomModal && (
+        <div className="modal-overlay" onClick={() => setShowCustomModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '550px'}}>
+            <h3 style={{background: 'linear-gradient(135deg, #FF2E00, #FF6A00)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '10px'}}>
+              <span>🔥</span> Flame Custom Plan
+            </h3>
+            
+            <div style={{background: 'linear-gradient(135deg, rgba(255, 46, 0, 0.1), rgba(255, 106, 0, 0.05))', padding: '24px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(255, 106, 0, 0.3)'}}>
+              
+              {/* RAM Input */}
+              <div style={{marginBottom: '20px'}}>
+                <label style={{color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
+                  <span>🔲</span> RAM (GB)
+                </label>
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="1"
+                    value={customPlan.ram}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setCustomPlan({...customPlan, ram: Math.max(1, Math.floor(val))});
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(255, 106, 0, 0.3)',
+                      background: 'rgba(0,0,0,0.3)',
+                      color: 'var(--primary-light)',
+                      fontSize: '1.2rem',
+                      fontWeight: '700',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{color: 'var(--text-muted)', fontSize: '0.9rem', minWidth: '80px'}}>× {RAM_PRICE} PKR</span>
+                  <span style={{color: 'var(--success)', fontWeight: '700', minWidth: '90px'}}>= {customPlan.ram * RAM_PRICE} PKR</span>
+                </div>
+              </div>
+
+              {/* CPU Input */}
+              <div style={{marginBottom: '20px'}}>
+                <label style={{color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
+                  <span>🔳</span> CPU (%)
+                </label>
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="1"
+                    value={customPlan.cpu}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setCustomPlan({...customPlan, cpu: Math.max(1, Math.floor(val))});
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(255, 106, 0, 0.3)',
+                      background: 'rgba(0,0,0,0.3)',
+                      color: 'var(--primary-light)',
+                      fontSize: '1.2rem',
+                      fontWeight: '700',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{color: 'var(--text-muted)', fontSize: '0.9rem', minWidth: '80px'}}>× {CPU_PRICE} PKR</span>
+                  <span style={{color: 'var(--success)', fontWeight: '700', minWidth: '90px'}}>= {Math.round(customPlan.cpu * CPU_PRICE)} PKR</span>
+                </div>
+              </div>
+
+              {/* SSD Input */}
+              <div>
+                <label style={{color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
+                  <span>💾</span> SSD Storage (GB)
+                </label>
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="1"
+                    value={customPlan.ssd}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setCustomPlan({...customPlan, ssd: Math.max(1, Math.floor(val))});
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(255, 106, 0, 0.3)',
+                      background: 'rgba(0,0,0,0.3)',
+                      color: 'var(--primary-light)',
+                      fontSize: '1.2rem',
+                      fontWeight: '700',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{color: 'var(--text-muted)', fontSize: '0.9rem', minWidth: '80px'}}>× {SSD_PRICE} PKR</span>
+                  <span style={{color: 'var(--success)', fontWeight: '700', minWidth: '90px'}}>= {customPlan.ssd * SSD_PRICE} PKR</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Price */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(0, 200, 83, 0.15), rgba(0, 230, 118, 0.1))',
+              padding: '20px',
+              borderRadius: '16px',
+              marginBottom: '24px',
+              border: '2px solid rgba(0, 200, 83, 0.4)',
+              textAlign: 'center'
+            }}>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Total Monthly Price</p>
+              <p style={{
+                fontSize: '2.5rem',
+                fontWeight: '800',
+                background: 'linear-gradient(135deg, #00C853, #00E676)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
+                {calculateCustomPrice()} PKR
+              </p>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '8px'}}>
+                {customPlan.ram} GB RAM + {customPlan.cpu}% CPU + {customPlan.ssd} GB SSD
+              </p>
+            </div>
+
+            {/* Summary */}
+            <div style={{background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', marginBottom: '24px'}}>
+              <h4 style={{color: 'var(--text-primary)', marginBottom: '12px', fontSize: '0.95rem'}}>📋 Your Custom Plan</h4>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span style={{color: 'var(--text-muted)'}}>RAM:</span>
+                  <span style={{color: 'var(--text-primary)', fontWeight: '600'}}>{customPlan.ram} GB</span>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span style={{color: 'var(--text-muted)'}}>CPU:</span>
+                  <span style={{color: 'var(--text-primary)', fontWeight: '600'}}>{customPlan.cpu}%</span>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span style={{color: 'var(--text-muted)'}}>Storage:</span>
+                  <span style={{color: 'var(--text-primary)', fontWeight: '600'}}>{customPlan.ssd} GB SSD</span>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span style={{color: 'var(--text-muted)'}}>Location:</span>
+                  <span style={{color: 'var(--text-primary)', fontWeight: '600'}}>{selectedLocation}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowCustomModal(false)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                style={{background: 'linear-gradient(135deg, #FF2E00, #FF6A00)'}}
+                onClick={() => {
+                  setShowCustomModal(false);
+                  setSelectedPlan({
+                    name: 'Flame Custom Plan',
+                    ram: `${customPlan.ram} GB`,
+                    cpu: `${customPlan.cpu}%`,
+                    storage: `${customPlan.ssd} GB SSD`,
+                    price: `${calculateCustomPrice()} PKR/month`,
+                    location: selectedLocation
+                  });
+                  setShowModal(true);
+                }}
+              >
+                🛒 Order Custom Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Full Screen Modal */}
+      {showQRModal && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setShowQRModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000,
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(165deg, rgba(20, 12, 8, 0.98), rgba(30, 18, 10, 0.95))',
+              padding: '40px',
+              borderRadius: '30px',
+              textAlign: 'center',
+              border: '2px solid rgba(255, 106, 0, 0.4)',
+              boxShadow: '0 0 60px rgba(255, 70, 0, 0.3)',
+              maxWidth: '90vw'
+            }}
+          >
+            <h3 style={{
+              color: '#fff',
+              fontSize: '1.5rem',
+              marginBottom: '24px',
+              background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FFD000)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              📱 Scan QR Code to Pay
+            </h3>
+            
+            <div style={{
+              background: '#fff',
+              padding: '30px',
+              borderRadius: '24px',
+              display: 'inline-block',
+              marginBottom: '24px',
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+            }}>
+              <img 
+                src="/ubl-qr.png" 
+                alt="QR Code" 
+                style={{
+                  width: '280px',
+                  height: '280px',
+                  objectFit: 'contain'
+                }} 
+              />
+            </div>
+            
+            <p style={{color: '#fff', fontWeight: '700', fontSize: '1.4rem', marginBottom: '8px'}}>
+              Adeel Mubarik - 5186
+            </p>
+            <p style={{color: '#00E676', fontSize: '1rem', fontWeight: '600', marginBottom: '24px'}}>
+              UBL Digital Account
+            </p>
+            
+            <button
+              onClick={() => setShowQRModal(false)}
+              style={{
+                padding: '14px 40px',
+                background: 'linear-gradient(135deg, #FF2E00, #FF6A00)',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '1rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(255, 70, 0, 0.5)'
+              }}
+            >
+              ✕ Close
+            </button>
           </div>
         </div>
       )}
