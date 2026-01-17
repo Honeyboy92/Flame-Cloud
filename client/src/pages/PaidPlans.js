@@ -154,16 +154,17 @@ const PaidPlans = () => {
             <div style={{textAlign: 'center', marginBottom: '40px', position: 'relative', zIndex: 1}}>
               <button 
                 onClick={() => setShowFlags(true)}
+                className="flame-location-btn"
                 style={{
-                  background: 'linear-gradient(135deg, #10b981, #34d399, #fff)',
-                  color: '#000',
+                  background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FF8C00)',
+                  color: '#fff',
                   padding: '18px 50px',
                   borderRadius: '50px',
-                  border: 'none',
+                  border: '2px solid #FF6A00',
                   fontSize: '1.2rem',
                   fontWeight: '700',
                   cursor: 'pointer',
-                  boxShadow: '0 8px 30px rgba(16, 185, 129, 0.4)',
+                  boxShadow: 'none',
                   transition: 'all 0.3s ease'
                 }}
               >
@@ -172,81 +173,114 @@ const PaidPlans = () => {
             </div>
           )}
 
-          {/* Location Flags - Shows after button click */}
+          {/* Blur Overlay with Flags Modal */}
           {showFlags && (
-            <>
-              <h3 style={{textAlign: 'center', marginBottom: '40px', color: 'var(--text-primary)', position: 'relative', zIndex: 1, fontSize: '1.4rem'}}>🌍 Select Server Location</h3>
-              <div style={{display: 'flex', justifyContent: 'center', gap: '80px', flexWrap: 'wrap', position: 'relative', zIndex: 1}}>
-                {/* Germany */}
-                <div 
-                  onClick={() => setSelectedLocation('Germany')}
-                  style={{cursor: 'pointer', textAlign: 'center', position: 'relative'}}
-                >
-                  {!isLocationAvailable('Germany') && (
-                    <span style={{
-                      position: 'absolute',
-                      top: '-12px',
-                      right: '-25px',
-                      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-                      color: '#000',
-                      padding: '8px 16px',
-                      borderRadius: '14px',
-                      fontSize: '0.95rem',
-                      fontWeight: '700',
-                      zIndex: 10
-                    }}>Soon</span>
-                  )}
-                  <img src="/germany-flag.png" alt="Germany" style={{width: '160px', height: '110px', borderRadius: '12px'}} />
-                  <p style={{color: 'var(--text-primary)', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>Germany</p>
-                </div>
+            <div 
+              className="flags-modal-overlay"
+              onClick={() => setShowFlags(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.85)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                animation: 'fadeIn 0.3s ease'
+              }}
+            >
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  textAlign: 'center',
+                  animation: 'scaleIn 0.3s ease'
+                }}
+              >
+                <h3 style={{marginBottom: '50px', color: '#fff', fontSize: '1.6rem'}}>
+                  <span style={{marginRight: '10px'}}>🌍</span> 
+                  Select Server Location
+                </h3>
+                <div style={{display: 'flex', justifyContent: 'center', gap: '80px', flexWrap: 'wrap'}}>
+                  {/* France */}
+                  <div 
+                    onClick={() => { setSelectedLocation('France'); setShowFlags(false); }}
+                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease'}}
+                    className="flag-item"
+                  >
+                    {!isLocationAvailable('France') && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        right: '-25px',
+                        background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                        color: '#000',
+                        padding: '8px 16px',
+                        borderRadius: '14px',
+                        fontSize: '0.95rem',
+                        fontWeight: '700',
+                        zIndex: 10
+                      }}>Soon</span>
+                    )}
+                    <img src="/france-flag.png" alt="France" style={{width: '160px', height: '110px', borderRadius: '12px', transition: 'transform 0.3s ease', background: 'transparent', objectFit: 'cover'}} />
+                    <p style={{color: '#fff', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>France</p>
+                  </div>
 
-                {/* UAE */}
-                <div 
-                  onClick={() => setSelectedLocation('UAE')}
-                  style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transform: 'scale(1.15)'}}
-                >
-                  {!isLocationAvailable('UAE') && (
-                    <span style={{
-                      position: 'absolute',
-                      top: '-12px',
-                      right: '-25px',
-                      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-                      color: '#000',
-                      padding: '8px 16px',
-                      borderRadius: '14px',
-                      fontSize: '0.95rem',
-                      fontWeight: '700',
-                      zIndex: 10
-                    }}>Soon</span>
-                  )}
-                  <img src="/uae-flag.png" alt="UAE" style={{width: '170px', height: '120px', borderRadius: '12px'}} />
-                  <p style={{color: 'var(--text-primary)', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>UAE</p>
-                </div>
+                  {/* UAE */}
+                  <div 
+                    onClick={() => { setSelectedLocation('UAE'); setShowFlags(false); }}
+                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease'}}
+                    className="flag-item"
+                  >
+                    {!isLocationAvailable('UAE') && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        right: '-25px',
+                        background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                        color: '#000',
+                        padding: '8px 16px',
+                        borderRadius: '14px',
+                        fontSize: '0.95rem',
+                        fontWeight: '700',
+                        zIndex: 10
+                      }}>Soon</span>
+                    )}
+                    <img src="/uae-flag.webp" alt="UAE" style={{width: '160px', height: '110px', borderRadius: '12px', transition: 'transform 0.3s ease', background: 'transparent', objectFit: 'cover'}} />
+                    <p style={{color: '#fff', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>UAE</p>
+                  </div>
 
-                {/* Singapore */}
-                <div 
-                  onClick={() => setSelectedLocation('Singapore')}
-                  style={{cursor: 'pointer', textAlign: 'center', position: 'relative'}}
-                >
-                  {!isLocationAvailable('Singapore') && (
-                    <span style={{
-                      position: 'absolute',
-                      top: '-12px',
-                      right: '-25px',
-                      background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-                      color: '#000',
-                      padding: '8px 16px',
-                      borderRadius: '14px',
-                      fontSize: '0.95rem',
-                      fontWeight: '700',
-                      zIndex: 10
-                    }}>Soon</span>
-                  )}
-                  <img src="/singapore-flag.png" alt="Singapore" style={{width: '160px', height: '110px', borderRadius: '12px'}} />
-                  <p style={{color: 'var(--text-primary)', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>Singapore</p>
+                  {/* Singapore */}
+                  <div 
+                    onClick={() => { setSelectedLocation('Singapore'); setShowFlags(false); }}
+                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease'}}
+                    className="flag-item"
+                  >
+                    {!isLocationAvailable('Singapore') && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        right: '-25px',
+                        background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                        color: '#000',
+                        padding: '8px 16px',
+                        borderRadius: '14px',
+                        fontSize: '0.95rem',
+                        fontWeight: '700',
+                        zIndex: 10
+                      }}>Soon</span>
+                    )}
+                    <img src="/singapore-flag.png" alt="Singapore" style={{width: '160px', height: '110px', borderRadius: '12px', transition: 'transform 0.3s ease', background: 'transparent', objectFit: 'cover'}} />
+                    <p style={{color: '#fff', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>Singapore</p>
+                  </div>
                 </div>
+                <p style={{marginTop: '40px', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem'}}>Click anywhere to close</p>
               </div>
-            </>
+            </div>
           )}
 
           {/* Quick Actions */}

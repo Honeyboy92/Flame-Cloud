@@ -1,53 +1,100 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { prepare } = require('../database');
+const { supabase } = require('../database');
 const { JWT_SECRET, authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/signup', (req, res) => {
+router.post('/signup', async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields required' });
   }
   try {
     const hashedPassword = bcrypt.hashSync(password, 10);
-    prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)').run(username, email, hashedPassword);
+    const { data, error } = await supabase
+      .from('users')
+      .insert({ username, email, password: hashedPassword })
+      .select();
+    
+    if (error) {
+      return res.status(400).json({ error: 'Username or email already exists' });
+    }
     res.json({ message: 'Account created successfully' });
   } catch (err) {
     res.status(400).json({ error: 'Username or email already exists' });
   }
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = prepare('SELECT * FROM users WHERE email = ?').get(email);
+  
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .limit(1);
+  
+  const user = users?.[0];
+  
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const token = jwt.sign({ id: user.id, username: user.username, email: user.email, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user: { id: user.id, username: user.username, email: user.email, isAdmin: user.isAdmin } });
+  
+  const token = jwt.sign(
+    { id: user.id, username: user.username, email: user.email, isAdmin: user.is_admin },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+  
+  res.json({
+    token,
+    user: { id: user.id, username: user.username, email: user.email, isAdmin: user.is_admin }
+  });
 });
 
-router.get('/me', authMiddleware, (req, res) => {
-  const user = prepare('SELECT id, username, email, isAdmin, avatar, createdAt FROM users WHERE id = ?').get(req.user.id);
-  res.json(user);
+router.get('/me', authMiddleware, async (req, res) => {
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, username, email, is_admin, avatar, created_at')
+    .eq('id', req.user.id)
+    .limit(1);
+  
+  const user = users?.[0];
+  if (user) {
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      isAdmin: user.is_admin,
+      avatar: user.avatar,
+      createdAt: user.created_at
+    });
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
 });
 
 // Update email
-router.put('/update-email', authMiddleware, (req, res) => {
+router.put('/update-email', authMiddleware, async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
   try {
-    // Check if email already exists
-    const existing = prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.user.id);
-    if (existing) {
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .neq('id', req.user.id)
+      .limit(1);
+    
+    if (existing && existing.length > 0) {
       return res.status(400).json({ error: 'Email already in use' });
     }
-    prepare('UPDATE users SET email = ? WHERE id = ?').run(email, req.user.id);
+    
+    await supabase.from('users').update({ email }).eq('id', req.user.id);
     res.json({ message: 'Email updated successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update email' });
@@ -55,18 +102,25 @@ router.put('/update-email', authMiddleware, (req, res) => {
 });
 
 // Update password
-router.put('/update-password', authMiddleware, (req, res) => {
+router.put('/update-password', authMiddleware, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ error: 'Current and new password are required' });
   }
   try {
-    const user = prepare('SELECT password FROM users WHERE id = ?').get(req.user.id);
+    const { data: users } = await supabase
+      .from('users')
+      .select('password')
+      .eq('id', req.user.id)
+      .limit(1);
+    
+    const user = users?.[0];
     if (!bcrypt.compareSync(currentPassword, user.password)) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
+    
     const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, req.user.id);
+    await supabase.from('users').update({ password: hashedPassword }).eq('id', req.user.id);
     res.json({ message: 'Password updated successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update password' });
@@ -74,17 +128,24 @@ router.put('/update-password', authMiddleware, (req, res) => {
 });
 
 // Update username
-router.put('/update-username', authMiddleware, (req, res) => {
+router.put('/update-username', authMiddleware, async (req, res) => {
   const { username } = req.body;
   if (!username) {
     return res.status(400).json({ error: 'Username is required' });
   }
   try {
-    const existing = prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, req.user.id);
-    if (existing) {
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .neq('id', req.user.id)
+      .limit(1);
+    
+    if (existing && existing.length > 0) {
       return res.status(400).json({ error: 'Username already taken' });
     }
-    prepare('UPDATE users SET username = ? WHERE id = ?').run(username, req.user.id);
+    
+    await supabase.from('users').update({ username }).eq('id', req.user.id);
     res.json({ message: 'Username updated successfully', username });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update username' });
@@ -92,10 +153,10 @@ router.put('/update-username', authMiddleware, (req, res) => {
 });
 
 // Update avatar
-router.put('/update-avatar', authMiddleware, (req, res) => {
+router.put('/update-avatar', authMiddleware, async (req, res) => {
   const { avatar } = req.body;
   try {
-    prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar || null, req.user.id);
+    await supabase.from('users').update({ avatar: avatar || null }).eq('id', req.user.id);
     res.json({ message: 'Avatar updated successfully', avatar });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update avatar' });

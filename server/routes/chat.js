@@ -1,29 +1,42 @@
 const express = require('express');
-const { prepare } = require('../database');
+const { supabase } = require('../database');
 const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Get chat messages between user and admin
-router.get('/messages/:otherUserId', authMiddleware, (req, res) => {
+router.get('/messages/:otherUserId', authMiddleware, async (req, res) => {
   const userId = req.user.id;
-  const otherUserId = req.params.otherUserId;
+  const otherUserId = parseInt(req.params.otherUserId);
   
-  const messages = prepare(`
-    SELECT m.*, u.avatar as senderAvatar FROM chat_messages m
-    LEFT JOIN users u ON m.senderId = u.id
-    WHERE (m.senderId = ? AND m.receiverId = ?) OR (m.senderId = ? AND m.receiverId = ?)
-    ORDER BY m.createdAt ASC
-  `).all(userId, otherUserId, otherUserId, userId);
+  const { data: messages } = await supabase
+    .from('chat_messages')
+    .select('*, users!chat_messages_sender_id_fkey(avatar)')
+    .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`)
+    .order('created_at');
   
   // Mark messages as read
-  prepare(`UPDATE chat_messages SET isRead = 1 WHERE senderId = ? AND receiverId = ?`).run(otherUserId, userId);
+  await supabase
+    .from('chat_messages')
+    .update({ is_read: true })
+    .eq('sender_id', otherUserId)
+    .eq('receiver_id', userId);
   
-  res.json(messages);
+  const mappedMessages = (messages || []).map(m => ({
+    id: m.id,
+    senderId: m.sender_id,
+    receiverId: m.receiver_id,
+    message: m.message,
+    isRead: m.is_read,
+    createdAt: m.created_at,
+    senderAvatar: m.users?.avatar
+  }));
+  
+  res.json(mappedMessages);
 });
 
 // Send message
-router.post('/send', authMiddleware, (req, res) => {
+router.post('/send', authMiddleware, async (req, res) => {
   const { receiverId, message } = req.body;
   const senderId = req.user.id;
   
@@ -31,35 +44,65 @@ router.post('/send', authMiddleware, (req, res) => {
     return res.status(400).json({ error: 'Message and receiver required' });
   }
   
-  const result = prepare(`INSERT INTO chat_messages (senderId, receiverId, message) VALUES (?, ?, ?)`).run(senderId, receiverId, message);
-  res.json({ id: result.lastInsertRowid, message: 'Message sent' });
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .insert({ sender_id: senderId, receiver_id: receiverId, message })
+    .select();
+  
+  if (error) {
+    return res.status(500).json({ error: 'Failed to send message' });
+  }
+  
+  res.json({ id: data[0].id, message: 'Message sent' });
 });
 
 // Get admin user (for regular users to chat with)
-router.get('/admin', authMiddleware, (req, res) => {
-  const admin = prepare('SELECT id, username FROM users WHERE isAdmin = 1 LIMIT 1').get();
-  res.json(admin);
+router.get('/admin', authMiddleware, async (req, res) => {
+  const { data } = await supabase
+    .from('users')
+    .select('id, username')
+    .eq('is_admin', true)
+    .limit(1);
+  
+  res.json(data?.[0] || null);
 });
 
 // Get all users with unread count (for admin)
-router.get('/users', authMiddleware, (req, res) => {
+router.get('/users', authMiddleware, async (req, res) => {
   if (!req.user.isAdmin) {
     return res.status(403).json({ error: 'Admin only' });
   }
   
-  const users = prepare(`
-    SELECT u.id, u.username, u.email, u.avatar,
-    (SELECT COUNT(*) FROM chat_messages WHERE senderId = u.id AND receiverId = ? AND isRead = 0) as unreadCount
-    FROM users u WHERE u.isAdmin = 0 ORDER BY u.username
-  `).all(req.user.id);
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, username, email, avatar')
+    .eq('is_admin', false)
+    .order('username');
   
-  res.json(users);
+  // Get unread counts for each user
+  const usersWithUnread = await Promise.all((users || []).map(async (u) => {
+    const { count } = await supabase
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('sender_id', u.id)
+      .eq('receiver_id', req.user.id)
+      .eq('is_read', false);
+    
+    return { ...u, unreadCount: count || 0 };
+  }));
+  
+  res.json(usersWithUnread);
 });
 
 // Get unread count for user
-router.get('/unread', authMiddleware, (req, res) => {
-  const count = prepare(`SELECT COUNT(*) as count FROM chat_messages WHERE receiverId = ? AND isRead = 0`).get(req.user.id);
-  res.json({ unread: count?.count || 0 });
+router.get('/unread', authMiddleware, async (req, res) => {
+  const { count } = await supabase
+    .from('chat_messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('receiver_id', req.user.id)
+    .eq('is_read', false);
+  
+  res.json({ unread: count || 0 });
 });
 
 module.exports = router;
