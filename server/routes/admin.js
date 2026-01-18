@@ -1,6 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { supabase } = require('../database');
+const { prepare, saveDB } = require('../database');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
@@ -9,322 +9,221 @@ router.use(authMiddleware);
 router.use(adminMiddleware);
 
 // Users
-router.get('/users', async (req, res) => {
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, username, email, is_admin, created_at')
-    .order('created_at', { ascending: false });
-  
-  const mappedUsers = (users || []).map(u => ({
-    id: u.id,
-    username: u.username,
-    email: u.email,
-    isAdmin: u.is_admin,
-    createdAt: u.created_at
-  }));
-  
-  res.json(mappedUsers);
+router.get('/users', (req, res) => {
+  const users = prepare('SELECT id, username, email, isAdmin, createdAt FROM users ORDER BY createdAt DESC').all();
+  res.json(users);
 });
 
 // Delete user
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', (req, res) => {
   const userId = req.params.id;
-  
-  const { data: users } = await supabase
-    .from('users')
-    .select('is_admin')
-    .eq('id', userId)
-    .limit(1);
-  
-  if (users?.[0]?.is_admin) {
+  // Don't allow deleting admin
+  const user = prepare('SELECT isAdmin FROM users WHERE id = ?').get(userId);
+  if (user?.isAdmin) {
     return res.status(400).json({ error: 'Cannot delete admin user' });
   }
-  
-  await supabase.from('chat_messages').delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-  await supabase.from('tickets').delete().eq('user_id', userId);
-  await supabase.from('users').delete().eq('id', userId);
-  
+  // Delete user's chat messages
+  prepare('DELETE FROM chat_messages WHERE senderId = ? OR receiverId = ?').run(userId, userId);
+  // Delete user's tickets
+  prepare('DELETE FROM tickets WHERE userId = ?').run(userId);
+  // Delete user
+  prepare('DELETE FROM users WHERE id = ?').run(userId);
   res.json({ message: 'User deleted successfully' });
 });
 
 // Paid Plans CRUD
-router.get('/paid-plans', async (req, res) => {
-  const { data: plans } = await supabase
-    .from('paid_plans')
-    .select('*')
-    .order('sort_order');
-  
-  const mappedPlans = (plans || []).map(p => ({
-    id: p.id, name: p.name, ram: p.ram, cpu: p.cpu, storage: p.storage,
-    location: p.location, price: p.price, discount: p.discount, sortOrder: p.sort_order
-  }));
-  
-  res.json(mappedPlans);
+router.get('/paid-plans', (req, res) => {
+  const plans = prepare('SELECT * FROM paid_plans ORDER BY sortOrder').all();
+  res.json(plans);
 });
 
-router.post('/paid-plans', async (req, res) => {
+router.post('/paid-plans', (req, res) => {
   const { name, ram, cpu, storage, location, price, discount, sortOrder } = req.body;
-  
-  const { data: maxData } = await supabase
-    .from('paid_plans')
-    .select('sort_order')
-    .order('sort_order', { ascending: false })
-    .limit(1);
-  
-  const newOrder = sortOrder || ((maxData?.[0]?.sort_order || 0) + 1);
-  
-  const { data, error } = await supabase
-    .from('paid_plans')
-    .insert({ name, ram, cpu, storage: storage || '10GB', location, price, discount: discount || 0, sort_order: newOrder })
-    .select();
-  
-  res.json({ id: data?.[0]?.id });
+  // Get max sortOrder and add 1 to put new plan at end
+  const maxOrder = prepare('SELECT MAX(sortOrder) as maxOrder FROM paid_plans').get();
+  const newOrder = sortOrder || ((maxOrder && maxOrder.maxOrder) ? maxOrder.maxOrder + 1 : 1);
+  const result = prepare('INSERT INTO paid_plans (name, ram, cpu, storage, location, price, discount, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(name, ram, cpu, storage || '10GB', location, price, discount || 0, newOrder);
+  res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/paid-plans/:id', async (req, res) => {
+router.put('/paid-plans/:id', (req, res) => {
   const { name, ram, cpu, storage, location, price, discount, sortOrder } = req.body;
-  
-  await supabase
-    .from('paid_plans')
-    .update({ name, ram, cpu, storage: storage || '10GB', location, price, discount: discount || 0, sort_order: sortOrder || 0 })
-    .eq('id', req.params.id);
-  
+  prepare('UPDATE paid_plans SET name=?, ram=?, cpu=?, storage=?, location=?, price=?, discount=?, sortOrder=? WHERE id=?').run(name, ram, cpu, storage || '10GB', location, price, discount || 0, sortOrder || 0, req.params.id);
   res.json({ message: 'Plan updated' });
 });
 
-router.delete('/paid-plans/:id', async (req, res) => {
-  await supabase.from('paid_plans').delete().eq('id', req.params.id);
+router.delete('/paid-plans/:id', (req, res) => {
+  prepare('DELETE FROM paid_plans WHERE id=?').run(req.params.id);
   res.json({ message: 'Plan deleted' });
 });
 
 // Free Plans CRUD
-router.get('/free-plans', async (req, res) => {
-  const { data: plans } = await supabase
-    .from('free_plans')
-    .select('*')
-    .order('sort_order');
-  
-  const mappedPlans = (plans || []).map(p => ({
-    id: p.id, name: p.name, ram: p.ram, cpu: p.cpu,
-    location: p.location, description: p.description, sortOrder: p.sort_order
-  }));
-  
-  res.json(mappedPlans);
+router.get('/free-plans', (req, res) => {
+  const plans = prepare('SELECT * FROM free_plans ORDER BY sortOrder').all();
+  res.json(plans);
 });
 
-router.post('/free-plans', async (req, res) => {
+router.post('/free-plans', (req, res) => {
   const { name, ram, cpu, location, description, sortOrder } = req.body;
-  
-  const { data } = await supabase
-    .from('free_plans')
-    .insert({ name, ram, cpu, location, description, sort_order: sortOrder || 0 })
-    .select();
-  
-  res.json({ id: data?.[0]?.id });
+  const result = prepare('INSERT INTO free_plans (name, ram, cpu, location, description, sortOrder) VALUES (?, ?, ?, ?, ?, ?)').run(name, ram, cpu, location, description, sortOrder || 0);
+  res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/free-plans/:id', async (req, res) => {
+router.put('/free-plans/:id', (req, res) => {
   const { name, ram, cpu, location, description, sortOrder } = req.body;
-  
-  await supabase
-    .from('free_plans')
-    .update({ name, ram, cpu, location, description, sort_order: sortOrder || 0 })
-    .eq('id', req.params.id);
-  
+  prepare('UPDATE free_plans SET name=?, ram=?, cpu=?, location=?, description=?, sortOrder=? WHERE id=?').run(name, ram, cpu, location, description, sortOrder || 0, req.params.id);
   res.json({ message: 'Plan updated' });
 });
 
-router.delete('/free-plans/:id', async (req, res) => {
-  await supabase.from('free_plans').delete().eq('id', req.params.id);
+router.delete('/free-plans/:id', (req, res) => {
+  prepare('DELETE FROM free_plans WHERE id=?').run(req.params.id);
   res.json({ message: 'Plan deleted' });
 });
 
 // Tickets
-router.get('/tickets', async (req, res) => {
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select('*, users(username, email)')
-    .order('created_at', { ascending: false });
-  
-  const mappedTickets = (tickets || []).map(t => ({
-    id: t.id, userId: t.user_id, subject: t.subject, message: t.message,
-    screenshot: t.screenshot, status: t.status, adminResponse: t.admin_response,
-    createdAt: t.created_at, username: t.users?.username, userEmail: t.users?.email
-  }));
-  
-  res.json(mappedTickets);
+router.get('/tickets', (req, res) => {
+  const tickets = prepare(`
+    SELECT t.*, u.username, u.email as userEmail 
+    FROM tickets t 
+    JOIN users u ON t.userId = u.id 
+    ORDER BY t.createdAt DESC
+  `).all();
+  res.json(tickets);
 });
 
-router.put('/tickets/:id', async (req, res) => {
+router.put('/tickets/:id', (req, res) => {
   const { status, adminResponse } = req.body;
-  
-  await supabase
-    .from('tickets')
-    .update({ status, admin_response: adminResponse })
-    .eq('id', req.params.id);
-  
+  prepare('UPDATE tickets SET status=?, adminResponse=? WHERE id=?').run(status, adminResponse, req.params.id);
   res.json({ message: 'Ticket updated' });
 });
 
-// About Content
-router.get('/about', async (req, res) => {
-  const { data } = await supabase.from('about_content').select('*').limit(1);
-  const about = data?.[0];
-  
-  if (about) {
-    res.json({
-      id: about.id, content: about.content, owner: about.owner, ownerPhoto: about.owner_photo,
-      coOwner: about.co_owner, coOwnerPhoto: about.co_owner_photo,
-      managers: about.managers, managersPhoto: about.managers_photo
-    });
-  } else {
-    res.json(null);
+
+
+// Admin credentials update
+router.put('/credentials', (req, res) => {
+  const { email, password } = req.body;
+  if (email) prepare('UPDATE users SET email=? WHERE id=?').run(email, req.user.id);
+  if (password) prepare('UPDATE users SET password=? WHERE id=?').run(bcrypt.hashSync(password, 10), req.user.id);
+  res.json({ message: 'Credentials updated' });
+});
+
+// About Content Management
+router.get('/about', (req, res) => {
+  console.log('Admin about route called');
+  try {
+    const about = prepare('SELECT * FROM about_content LIMIT 1').get();
+    console.log('About data from DB:', about);
+    if (about) {
+      res.json(about);
+    } else {
+      console.log('No about data found, returning default');
+      const defaultData = {
+        id: 1,
+        content: "Flame Cloud is a next-generation gaming server hosting platform built for speed, power, and reliability.",
+        founder_name: "Flame Founder",
+        founder_photo: null,
+        owner_name: "Flame Owner", 
+        owner_photo: null,
+        management_name: "Flame Management",
+        management_photo: null
+      };
+      res.json(defaultData);
+    }
+  } catch (error) {
+    console.error('Error in admin about route:', error);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-router.put('/about', async (req, res) => {
-  const { content, owner, ownerPhoto, coOwner, coOwnerPhoto, managers, managersPhoto } = req.body;
+router.put('/about', (req, res) => {
+  const { content, founder_name, founder_photo, owner_name, owner_photo, management_name, management_photo } = req.body;
   
-  await supabase
-    .from('about_content')
-    .update({
-      content, owner, owner_photo: ownerPhoto || null,
-      co_owner: coOwner, co_owner_photo: coOwnerPhoto || null,
-      managers, managers_photo: managersPhoto || null
-    })
-    .eq('id', 1);
+  // Check if record exists
+  const exists = prepare('SELECT id FROM about_content LIMIT 1').get();
+  
+  if (exists) {
+    prepare(`UPDATE about_content SET 
+      content=?, founder_name=?, founder_photo=?, 
+      owner_name=?, owner_photo=?, management_name=?, management_photo=? 
+      WHERE id=?`).run(
+      content, founder_name, founder_photo || null, 
+      owner_name, owner_photo || null, management_name, management_photo || null, 
+      exists.id
+    );
+  } else {
+    prepare(`INSERT INTO about_content 
+      (content, founder_name, founder_photo, owner_name, owner_photo, management_name, management_photo) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+      content, founder_name, founder_photo || null, 
+      owner_name, owner_photo || null, management_name, management_photo || null
+    );
+  }
   
   res.json({ message: 'About content updated' });
 });
 
-// Admin credentials update
-router.put('/credentials', async (req, res) => {
-  const { email, password } = req.body;
-  
-  const updates = {};
-  if (email) updates.email = email;
-  if (password) updates.password = bcrypt.hashSync(password, 10);
-  
-  if (Object.keys(updates).length > 0) {
-    await supabase.from('users').update(updates).eq('id', req.user.id);
-  }
-  
-  res.json({ message: 'Credentials updated' });
-});
-
 // Location Settings
-router.get('/locations', async (req, res) => {
-  const { data: locations } = await supabase.from('location_settings').select('*');
-  
-  const mappedLocations = (locations || []).map(l => ({
-    id: l.id, location: l.location, isAvailable: l.is_available
-  }));
-  
-  res.json(mappedLocations);
+router.get('/locations', (req, res) => {
+  const locations = prepare('SELECT * FROM location_settings').all();
+  res.json(locations);
 });
 
-router.put('/locations/:location', async (req, res) => {
+router.put('/locations/:location', (req, res) => {
   const { isAvailable } = req.body;
-  
-  await supabase
-    .from('location_settings')
-    .update({ is_available: isAvailable })
-    .eq('location', req.params.location);
-  
+  prepare('UPDATE location_settings SET isAvailable=? WHERE location=?').run(isAvailable ? 1 : 0, req.params.location);
   res.json({ message: 'Location updated' });
 });
 
 // YT Partners CRUD
-router.get('/yt-partners', async (req, res) => {
-  const { data: partners } = await supabase
-    .from('yt_partners')
-    .select('*')
-    .order('sort_order')
-    .order('created_at', { ascending: false });
-  
-  const mappedPartners = (partners || []).map(p => ({
-    id: p.id, name: p.name, link: p.link, logo: p.logo,
-    isFeatured: p.is_featured, sortOrder: p.sort_order, createdAt: p.created_at
-  }));
-  
-  res.json(mappedPartners);
+router.get('/yt-partners', (req, res) => {
+  const partners = prepare('SELECT * FROM yt_partners ORDER BY sortOrder ASC, createdAt DESC, id DESC').all();
+  res.json(partners);
 });
 
-router.post('/yt-partners', async (req, res) => {
+router.post('/yt-partners', (req, res) => {
   const { name, link, logo, isFeatured } = req.body;
-  
-  const { data: maxData } = await supabase
-    .from('yt_partners')
-    .select('sort_order')
-    .order('sort_order', { ascending: false })
-    .limit(1);
-  
-  const newOrder = (maxData?.[0]?.sort_order || 0) + 1;
-  
-  const { data } = await supabase
-    .from('yt_partners')
-    .insert({ name, link, logo: logo || null, is_featured: isFeatured || false, sort_order: newOrder })
-    .select();
-  
-  res.json({ id: data?.[0]?.id });
+  const createdAt = new Date().toISOString();
+  // Get max sortOrder and add 1
+  const maxOrder = prepare('SELECT MAX(sortOrder) as maxOrder FROM yt_partners').get();
+  const newOrder = (maxOrder && maxOrder.maxOrder) ? maxOrder.maxOrder + 1 : 1;
+  const result = prepare('INSERT INTO yt_partners (name, link, logo, isFeatured, createdAt, sortOrder) VALUES (?, ?, ?, ?, ?, ?)').run(name, link, logo || null, isFeatured ? 1 : 0, createdAt, newOrder);
+  res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/yt-partners/:id', async (req, res) => {
+router.put('/yt-partners/:id', (req, res) => {
   const { name, link, logo, isFeatured } = req.body;
-  
-  await supabase
-    .from('yt_partners')
-    .update({ name, link, logo: logo || null, is_featured: isFeatured || false })
-    .eq('id', req.params.id);
-  
+  prepare('UPDATE yt_partners SET name=?, link=?, logo=?, isFeatured=? WHERE id=?').run(name, link, logo || null, isFeatured ? 1 : 0, req.params.id);
   res.json({ message: 'Partner updated' });
 });
 
-router.delete('/yt-partners/:id', async (req, res) => {
-  await supabase.from('yt_partners').delete().eq('id', req.params.id);
+router.delete('/yt-partners/:id', (req, res) => {
+  prepare('DELETE FROM yt_partners WHERE id=?').run(req.params.id);
   res.json({ message: 'Partner deleted' });
 });
 
 // YT Partners Reorder
-router.put('/yt-partners-reorder', async (req, res) => {
+router.put('/yt-partners-reorder', (req, res) => {
   const { orderedIds } = req.body;
-  
-  for (let i = 0; i < orderedIds.length; i++) {
-    await supabase
-      .from('yt_partners')
-      .update({ sort_order: i + 1 })
-      .eq('id', orderedIds[i]);
-  }
-  
+  orderedIds.forEach((id, index) => {
+    prepare('UPDATE yt_partners SET sortOrder=? WHERE id=?').run(index + 1, id);
+  });
   res.json({ message: 'Partners reordered' });
 });
 
 // Site Settings
-router.get('/settings/:key', async (req, res) => {
-  const { data } = await supabase
-    .from('site_settings')
-    .select('*')
-    .eq('key', req.params.key)
-    .limit(1);
-  
-  res.json(data?.[0] || { key: req.params.key, value: '0' });
+router.get('/settings/:key', (req, res) => {
+  const setting = prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
+  res.json(setting || { key: req.params.key, value: '0' });
 });
 
-router.put('/settings/:key', async (req, res) => {
+router.put('/settings/:key', (req, res) => {
   const { value } = req.body;
-  
-  const { data: exists } = await supabase
-    .from('site_settings')
-    .select('*')
-    .eq('key', req.params.key)
-    .limit(1);
-  
-  if (exists && exists.length > 0) {
-    await supabase.from('site_settings').update({ value }).eq('key', req.params.key);
+  const exists = prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
+  if (exists) {
+    prepare('UPDATE site_settings SET value=? WHERE key=?').run(value, req.params.key);
   } else {
-    await supabase.from('site_settings').insert({ key: req.params.key, value });
+    prepare('INSERT INTO site_settings (key, value) VALUES (?, ?)').run(req.params.key, value);
   }
-  
   res.json({ message: 'Setting updated' });
 });
 

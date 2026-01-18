@@ -14,7 +14,7 @@ const AdminPanel = () => {
   const [planLocation, setPlanLocation] = useState('UAE');
   const [locationSettings, setLocationSettings] = useState([]);
   const [draggedItem, setDraggedItem] = useState(null);
-  const [discordMembers, setDiscordMembers] = useState('500+');
+  const [discordMembers, setDiscordMembers] = useState('400+');
 
   useEffect(() => {
     loadData();
@@ -38,12 +38,22 @@ const AdminPanel = () => {
     setLocationSettings(locationsRes.data);
     setYtPartners(ytRes.data);
     setYtPartnersEnabled(ytEnabledRes.data.value === '1');
-    setDiscordMembers(discordRes.data.value || '500+');
+    setDiscordMembers(discordRes.data.value || '400+');
   };
 
   const handleDiscordMembersUpdate = async () => {
     await axios.put('/api/admin/settings/discord_members', { value: discordMembers });
     alert('Discord members updated!');
+  };
+
+  const handleAboutUpdate = async () => {
+    try {
+      await axios.put('/api/admin/about', about);
+      alert('About section updated successfully!');
+    } catch (error) {
+      console.error('Error updating about:', error);
+      alert('Error updating about section');
+    }
   };
 
   const handleSavePlan = async (type) => {
@@ -73,11 +83,7 @@ const AdminPanel = () => {
     loadData();
   };
 
-  const handleAboutUpdate = async () => {
-    await axios.put('/api/admin/about', about);
-    setModal(null);
-    alert('About content updated!');
-  };
+
 
   const handleLocationToggle = async (location, currentStatus) => {
     await axios.put(`/api/admin/locations/${location}`, { isAvailable: !currentStatus });
@@ -166,10 +172,10 @@ const AdminPanel = () => {
         <button className={tab === 'tickets' ? 'active' : ''} onClick={() => setTab('tickets')}>🎫 Orders/Tickets</button>
         <button className={tab === 'paid' ? 'active' : ''} onClick={() => setTab('paid')}>💰 Paid Plans</button>
         <button className={tab === 'locations' ? 'active' : ''} onClick={() => setTab('locations')}>🌍 Locations</button>
+        <button className={tab === 'about' ? 'active' : ''} onClick={() => setTab('about')}>🔥 About Section</button>
         <button className={tab === 'ytpartners' ? 'active' : ''} onClick={() => setTab('ytpartners')}>📺 YT Partners</button>
         <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>👥 Members</button>
         <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>🔐 Users</button>
-        <button className={tab === 'about' ? 'active' : ''} onClick={() => setTab('about')}>📋 About</button>
       </div>
 
       {/* Members Tab */}
@@ -572,148 +578,7 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* About Tab */}
-      {tab === 'about' && (
-        <div className="card">
-          <h3>📋 Edit About Content</h3>
 
-          <div className="form-group">
-            <label>About Content</label>
-            <textarea value={about.content || ''} onChange={e => setAbout({...about, content: e.target.value})} rows={5} />
-          </div>
-          
-          {/* Team Members with Photos */}
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px'}}>
-            {/* Owner */}
-            <div style={{background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)'}}>
-              <div style={{textAlign: 'center', marginBottom: '16px'}}>
-                <div 
-                  style={{
-                    width: '80px', 
-                    height: '80px', 
-                    borderRadius: '50%', 
-                    background: about.ownerPhoto ? `url(${about.ownerPhoto}) center/cover` : 'linear-gradient(135deg, #FF2E00, #FF6A00)', 
-                    margin: '0 auto 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    border: '3px solid var(--primary)'
-                  }}
-                  onClick={() => document.getElementById('owner-photo').click()}
-                >
-                  {!about.ownerPhoto && <span style={{fontSize: '2rem'}}>👑</span>}
-                </div>
-                <input 
-                  type="file" 
-                  id="owner-photo" 
-                  accept="image/*" 
-                  style={{display: 'none'}}
-                  onChange={e => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => setAbout({...about, ownerPhoto: reader.result});
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload</p>
-              </div>
-              <div className="form-group" style={{marginBottom: 0}}>
-                <label>👑 Owner</label>
-                <input value={about.owner || ''} onChange={e => setAbout({...about, owner: e.target.value})} />
-              </div>
-            </div>
-
-            {/* Founder */}
-            <div style={{background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)'}}>
-              <div style={{textAlign: 'center', marginBottom: '16px'}}>
-                <div 
-                  style={{
-                    width: '80px', 
-                    height: '80px', 
-                    borderRadius: '50%', 
-                    background: about.coOwnerPhoto ? `url(${about.coOwnerPhoto}) center/cover` : 'linear-gradient(135deg, #8B5CF6, #6366F1)', 
-                    margin: '0 auto 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    border: '3px solid #8B5CF6'
-                  }}
-                  onClick={() => document.getElementById('founder-photo').click()}
-                >
-                  {!about.coOwnerPhoto && <span style={{fontSize: '2rem'}}>⭐</span>}
-                </div>
-                <input 
-                  type="file" 
-                  id="founder-photo" 
-                  accept="image/*" 
-                  style={{display: 'none'}}
-                  onChange={e => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => setAbout({...about, coOwnerPhoto: reader.result});
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload</p>
-              </div>
-              <div className="form-group" style={{marginBottom: 0}}>
-                <label>⭐ Founder</label>
-                <input value={about.coOwner || ''} onChange={e => setAbout({...about, coOwner: e.target.value})} />
-              </div>
-            </div>
-
-            {/* Manager */}
-            <div style={{background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '16px', border: '1px solid var(--glass-border)'}}>
-              <div style={{textAlign: 'center', marginBottom: '16px'}}>
-                <div 
-                  style={{
-                    width: '80px', 
-                    height: '80px', 
-                    borderRadius: '50%', 
-                    background: about.managersPhoto ? `url(${about.managersPhoto}) center/cover` : 'linear-gradient(135deg, #10B981, #059669)', 
-                    margin: '0 auto 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    border: '3px solid #10B981'
-                  }}
-                  onClick={() => document.getElementById('manager-photo').click()}
-                >
-                  {!about.managersPhoto && <span style={{fontSize: '2rem'}}>🛡️</span>}
-                </div>
-                <input 
-                  type="file" 
-                  id="manager-photo" 
-                  accept="image/*" 
-                  style={{display: 'none'}}
-                  onChange={e => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => setAbout({...about, managersPhoto: reader.result});
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload</p>
-              </div>
-              <div className="form-group" style={{marginBottom: 0}}>
-                <label>🛡️ Manager</label>
-                <input value={about.managers || ''} onChange={e => setAbout({...about, managers: e.target.value})} />
-              </div>
-            </div>
-          </div>
-          
-          <button className="btn btn-success" style={{marginTop: '20px'}} onClick={handleAboutUpdate}>Save Changes</button>
-        </div>
-      )}
 
 
       {/* Plan Modal */}
@@ -868,6 +733,191 @@ const AdminPanel = () => {
               <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>
               <button className="btn btn-success" onClick={handleSaveYtPartner}>Save</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* About Section Tab */}
+      {tab === 'about' && (
+        <div className="card">
+          <h3>🔥 Edit About Section</h3>
+          <p style={{color: 'var(--text-muted)', marginBottom: '30px'}}>
+            Customize your About section content and team information
+          </p>
+
+          {/* About Content */}
+          <div className="form-group">
+            <label>About Content Description</label>
+            <textarea 
+              value={about.content || ''} 
+              onChange={e => setAbout({...about, content: e.target.value})} 
+              rows={4}
+              placeholder="Describe your company and services..."
+              style={{resize: 'vertical'}}
+            />
+          </div>
+
+          {/* Team Members Section */}
+          <div style={{marginTop: '40px'}}>
+            <h4 style={{color: 'var(--primary)', marginBottom: '20px'}}>👑 Team Members</h4>
+            
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px'}}>
+              
+              {/* Flame Founder */}
+              <div style={{background: 'rgba(255, 46, 0, 0.1)', padding: '25px', borderRadius: '16px', border: '1px solid rgba(255, 46, 0, 0.3)'}}>
+                <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                  <div 
+                    style={{
+                      width: '80px', 
+                      height: '80px', 
+                      borderRadius: '50%', 
+                      background: about.founder_photo ? `url("${about.founder_photo}") center/cover` : 'linear-gradient(135deg, #FF2E00, #dc2626)', 
+                      margin: '0 auto 15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      border: '3px solid #FF2E00',
+                      fontSize: '2rem',
+                      color: '#fff',
+                      fontWeight: '700'
+                    }}
+                    onClick={() => document.getElementById('founder-photo').click()}
+                  >
+                    {!about.founder_photo && 'FF'}
+                  </div>
+                  <input 
+                    type="file" 
+                    id="founder-photo" 
+                    accept="image/*" 
+                    style={{display: 'none'}}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setAbout({...about, founder_photo: reader.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload photo</p>
+                </div>
+                <div className="form-group" style={{marginBottom: 0}}>
+                  <label>🔥 Flame Founder Name</label>
+                  <input 
+                    value={about.founder_name || ''} 
+                    onChange={e => setAbout({...about, founder_name: e.target.value})} 
+                    placeholder="Enter founder name"
+                  />
+                </div>
+              </div>
+
+              {/* Flame Owner */}
+              <div style={{background: 'rgba(255, 106, 0, 0.1)', padding: '25px', borderRadius: '16px', border: '1px solid rgba(255, 106, 0, 0.3)'}}>
+                <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                  <div 
+                    style={{
+                      width: '80px', 
+                      height: '80px', 
+                      borderRadius: '50%', 
+                      background: about.owner_photo ? `url("${about.owner_photo}") center/cover` : 'linear-gradient(135deg, #FF6A00, #FF2E00)', 
+                      margin: '0 auto 15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      border: '3px solid #FF6A00',
+                      fontSize: '2rem',
+                      color: '#fff',
+                      fontWeight: '700'
+                    }}
+                    onClick={() => document.getElementById('owner-photo').click()}
+                  >
+                    {!about.owner_photo && 'FO'}
+                  </div>
+                  <input 
+                    type="file" 
+                    id="owner-photo" 
+                    accept="image/*" 
+                    style={{display: 'none'}}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setAbout({...about, owner_photo: reader.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload photo</p>
+                </div>
+                <div className="form-group" style={{marginBottom: 0}}>
+                  <label>🔥 Flame Owner Name</label>
+                  <input 
+                    value={about.owner_name || ''} 
+                    onChange={e => setAbout({...about, owner_name: e.target.value})} 
+                    placeholder="Enter owner name"
+                  />
+                </div>
+              </div>
+
+              {/* Flame Management */}
+              <div style={{background: 'rgba(255, 140, 0, 0.1)', padding: '25px', borderRadius: '16px', border: '1px solid rgba(255, 140, 0, 0.3)'}}>
+                <div style={{textAlign: 'center', marginBottom: '20px'}}>
+                  <div 
+                    style={{
+                      width: '80px', 
+                      height: '80px', 
+                      borderRadius: '50%', 
+                      background: about.management_photo ? `url("${about.management_photo}") center/cover` : 'linear-gradient(135deg, #FF8C00, #FF6A00)', 
+                      margin: '0 auto 15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      border: '3px solid #FF8C00',
+                      fontSize: '2rem',
+                      color: '#fff',
+                      fontWeight: '700'
+                    }}
+                    onClick={() => document.getElementById('management-photo').click()}
+                  >
+                    {!about.management_photo && 'FM'}
+                  </div>
+                  <input 
+                    type="file" 
+                    id="management-photo" 
+                    accept="image/*" 
+                    style={{display: 'none'}}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setAbout({...about, management_photo: reader.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <p style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Click to upload photo</p>
+                </div>
+                <div className="form-group" style={{marginBottom: 0}}>
+                  <label>🔥 Flame Management Name</label>
+                  <input 
+                    value={about.management_name || ''} 
+                    onChange={e => setAbout({...about, management_name: e.target.value})} 
+                    placeholder="Enter management name"
+                  />
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div style={{textAlign: 'center', marginTop: '40px'}}>
+            <button className="btn btn-success" onClick={handleAboutUpdate} style={{padding: '16px 32px', fontSize: '1.1rem'}}>
+              🔥 Save About Section
+            </button>
           </div>
         </div>
       )}

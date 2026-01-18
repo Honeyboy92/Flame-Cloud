@@ -31,16 +31,16 @@ function App() {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<PaidPlans />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="about" element={<About />} />
         <Route path="paid-plans" element={<PaidPlans />} />
         <Route path="yt-partners" element={<YTPartners />} />
         <Route path="features" element={<Features />} />
-        <Route path="chat" element={user ? <Chat /> : <Navigate to="/login" />} />
-        <Route path="admin" element={user?.isAdmin ? <AdminPanel /> : <Navigate to="/dashboard" />} />
+        <Route path="chat" element={<Chat />} />
+        <Route path="admin" element={user?.isAdmin ? <AdminPanel /> : <Navigate to="/dashboard" replace />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

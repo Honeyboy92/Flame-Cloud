@@ -25,26 +25,60 @@ const Dashboard = () => {
               <svg className="badge-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
-              <span>Instant Setup</span>
+              <span style={{
+                background: 'linear-gradient(135deg, #ff6a00, #ff2e00, #ff6a00)',
+                backgroundSize: '200% 200%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                animation: 'flameGradient 3s ease-in-out infinite',
+                fontWeight: '600'
+              }}>Instant Setup</span>
             </div>
             <div className="hero-badge">
               <svg className="badge-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
-              <span>DDoS Protected</span>
+              <span style={{
+                background: 'linear-gradient(135deg, #ff6a00, #ff2e00, #ff6a00)',
+                backgroundSize: '200% 200%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                animation: 'flameGradient 3s ease-in-out infinite',
+                fontWeight: '600'
+              }}>DDoS Protected</span>
             </div>
             <div className="hero-badge">
               <svg className="badge-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
-              <span>99.9% Uptime</span>
+              <span style={{
+                background: 'linear-gradient(135deg, #ff6a00, #ff2e00, #ff6a00)',
+                backgroundSize: '200% 200%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                animation: 'flameGradient 3s ease-in-out infinite',
+                fontWeight: '600'
+              }}>99.9% Uptime</span>
             </div>
           </div>
 
           <div className="hero-buttons">
             <Link to="/paid-plans" className="btn btn-hero-primary">
-              <img src="/logo.png" alt="" style={{width: '24px', height: '24px', marginRight: '8px'}} /> Start Hosting →
+              <img src="/logo.png" alt="" style={{width: '24px', height: '24px', marginRight: '8px'}} /> 
+              <span style={{
+                background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FFD000)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontWeight: '700',
+                fontSize: '1rem'
+              }}>
+                Start Hosting →
+              </span>
             </Link>
           </div>
         </div>

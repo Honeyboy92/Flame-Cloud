@@ -20,12 +20,12 @@ const PaidPlans = () => {
   const [locationSettings, setLocationSettings] = useState([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customPlan, setCustomPlan] = useState({ ram: 1, cpu: 50, ssd: 5 });
-  const [discordMembers, setDiscordMembers] = useState('500+');
+  const [discordMembers, setDiscordMembers] = useState('400+');
   const [showFlags, setShowFlags] = useState(false);
 
   // Custom Plan Pricing
   const RAM_PRICE = 50; // PKR per GB
-  const SSD_PRICE = 4;  // PKR per GB
+  const SSD_PRICE = 6;  // PKR per GB
   const CPU_PRICE = 1; // PKR per 1%
 
   const calculateCustomPrice = () => {
@@ -156,19 +156,33 @@ const PaidPlans = () => {
                 onClick={() => setShowFlags(true)}
                 className="flame-location-btn"
                 style={{
-                  background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FF8C00)',
-                  color: '#fff',
+                  background: 'none !important',
+                  backgroundColor: 'transparent !important',
+                  backgroundImage: 'none !important',
                   padding: '18px 50px',
                   borderRadius: '50px',
                   border: '2px solid #FF6A00',
                   fontSize: '1.2rem',
                   fontWeight: '700',
                   cursor: 'pointer',
-                  boxShadow: 'none',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  color: 'transparent',
+                  boxShadow: '0 0 20px rgba(255, 106, 0, 0.4), 0 0 40px rgba(255, 46, 0, 0.2)',
+                  animation: 'flameGlow 3s ease-in-out infinite alternate'
                 }}
               >
-                🌍 Choose Your Location
+                <span style={{
+                  background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FFD000)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  fontSize: '1.2rem',
+                  fontWeight: '700',
+                  display: 'inline-block',
+                  textShadow: '0 0 10px rgba(255, 106, 0, 0.5)'
+                }}>
+                  🌍 Choose Your Location
+                </span>
               </button>
             </div>
           )}
@@ -201,9 +215,14 @@ const PaidPlans = () => {
                   animation: 'scaleIn 0.3s ease'
                 }}
               >
-                <h3 style={{marginBottom: '50px', color: '#fff', fontSize: '1.6rem'}}>
+                <h3 style={{marginBottom: '50px', fontSize: '1.6rem'}}>
                   <span style={{marginRight: '10px'}}>🌍</span> 
-                  Select Server Location
+                  <span style={{
+                    background: 'linear-gradient(135deg, #FF2E00, #FF6A00, #FFD000)', 
+                    WebkitBackgroundClip: 'text', 
+                    WebkitTextFillColor: 'transparent',
+                    fontWeight: '800'
+                  }}>Select Server Location</span>
                 </h3>
                 <div style={{display: 'flex', justifyContent: 'center', gap: '80px', flexWrap: 'wrap'}}>
                   {/* France */}

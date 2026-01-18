@@ -172,9 +172,9 @@ const Layout = () => {
       </div>
 
       <header className="top-navbar">
-        <div className="navbar-brand">
-          <img src="/logo.png" alt="🔥" className="brand-logo" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
-          <div className="brand-text">
+        <div className="navbar-brand" onClick={() => navigate('/dashboard')} style={{cursor: 'pointer', transition: 'all 0.3s ease'}}>
+          <img src="/logo.png" alt="🔥" className="brand-logo" style={{width: '50px', height: '50px', objectFit: 'contain', transition: 'transform 0.3s ease'}} />
+          <div className="brand-text" style={{transition: 'transform 0.3s ease'}}>
             <h1>Flame Cloud</h1>
             <span>Premium Minecraft Hosting</span>
           </div>
@@ -203,9 +203,8 @@ const Layout = () => {
 
           <NavLink to="/yt-partners" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
             <div className="nav-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
-                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="#FF0000">
+                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
               </svg>
             </div>
             <span>YT Partners</span>
@@ -222,6 +221,7 @@ const Layout = () => {
             <span>About</span>
           </NavLink>
 
+
           <NavLink to="/features" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
             <div className="nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -229,6 +229,15 @@ const Layout = () => {
               </svg>
             </div>
             <span>Features</span>
+          </NavLink>
+
+          <NavLink to="/chat" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <div className="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <span>Chat</span>
           </NavLink>
 
           {user?.isAdmin && (
@@ -282,7 +291,7 @@ const Layout = () => {
       {/* Floating Buttons Container - Right Side */}
       <div className="floating-buttons-right">
         {/* Game Panel Button */}
-        <a href="https://dash.diamondnode.qzz.io" target="_blank" rel="noopener noreferrer" className="float-btn game-panel-btn">
+        <a href="https://panel.flamecloud.online/" target="_blank" rel="noopener noreferrer" className="float-btn game-panel-btn">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
           </svg>

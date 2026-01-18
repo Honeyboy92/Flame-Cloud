@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const Features = () => {
-  const [discordMembers, setDiscordMembers] = useState('500+');
+  const [discordMembers, setDiscordMembers] = useState('400+');
 
   useEffect(() => {
     axios.get('/api/plans/settings/discord_members').then(res => {

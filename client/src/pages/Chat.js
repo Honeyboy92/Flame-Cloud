@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Chat = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -12,19 +14,22 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (user) {
-      if (user.isAdmin) {
-        loadUsers();
-        const interval = setInterval(loadUsers, 5000);
-        return () => clearInterval(interval);
-      } else {
-        axios.get('/api/chat/admin').then(res => {
-          setAdminId(res.data?.id);
-          setSelectedUser(res.data);
-        }).catch(() => {});
-      }
+    if (!user) {
+      navigate('/login');
+      return;
     }
-  }, [user]);
+    
+    if (user.isAdmin) {
+      loadUsers();
+      const interval = setInterval(loadUsers, 5000);
+      return () => clearInterval(interval);
+    } else {
+      axios.get('/api/chat/admin').then(res => {
+        setAdminId(res.data?.id);
+        setSelectedUser(res.data);
+      }).catch(() => {});
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (selectedUser || adminId) {
