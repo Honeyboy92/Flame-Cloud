@@ -31,7 +31,7 @@ function App() {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<PaidPlans />} />
+        <Route path="/" element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="about" element={<About />} />
         <Route path="paid-plans" element={<PaidPlans />} />
