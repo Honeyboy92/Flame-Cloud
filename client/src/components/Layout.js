@@ -105,18 +105,6 @@ const Layout = () => {
     }
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result);
-        setProfileData({...profileData, avatar: reader.result});
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setProfileLoading(true);
