@@ -22,6 +22,19 @@ const About = () => {
             founder_name: "Flame Founder",
             founder_photo: null,
             owner_name: "Flame Owner",
+            owner_photo: null,
+            management_name: "Flame Management",
+            management_photo: null
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching about data:', error);
+        // Set default data if API fails
+        setAbout({
+          content: "Flame Cloud is a next-generation gaming server hosting platform built for speed, power, and reliability.",
+          founder_name: "Flame Founder",
+          founder_photo: null,
+          owner_name: "Flame Owner",
           owner_photo: null,
           management_name: "Flame Management",
           management_photo: null
