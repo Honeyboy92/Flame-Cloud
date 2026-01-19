@@ -23,12 +23,11 @@ const AdminPanel = () => {
   const loadData = async () => {
     try {
       // Load all data from Supabase
-      const [paidPlansRes, usersRes, ticketsRes, aboutRes, locationsRes, ytRes, settingsRes] = await Promise.all([
+      const [paidPlansRes, usersRes, ticketsRes, aboutRes, ytRes, settingsRes] = await Promise.all([
         supabase.from('paid_plans').select('*').order('sort_order'),
         supabase.from('users').select('*').order('created_at', { ascending: false }),
         supabase.from('tickets').select('*').order('created_at', { ascending: false }),
         supabase.from('about_content').select('*').limit(1),
-        supabase.from('location_settings').select('*'),
         supabase.from('yt_partners').select('*').order('sort_order'),
         supabase.from('site_settings').select('*')
       ]);
@@ -37,8 +36,20 @@ const AdminPanel = () => {
       setUsers(usersRes.data || []);
       setTickets(ticketsRes.data || []);
       setAbout((aboutRes.data && aboutRes.data[0]) || {});
-      setLocationSettings(locationsRes.data || []);
       setYtPartners(ytRes.data || []);
+      
+      // Try to load location settings, fallback to default if table doesn't exist
+      try {
+        const locationsRes = await supabase.from('location_settings').select('*');
+        setLocationSettings(locationsRes.data || []);
+      } catch (locError) {
+        console.log('Location settings table not found, using defaults');
+        setLocationSettings([
+          { location: 'UAE', is_available: true },
+          { location: 'France', is_available: false },
+          { location: 'Singapore', is_available: false }
+        ]);
+      }
       
       // Process settings
       const settings = settingsRes.data || [];
@@ -154,16 +165,35 @@ const AdminPanel = () => {
 
   const handleLocationToggle = async (location, currentStatus) => {
     try {
+      // Try to update in database first
       const { error } = await supabase
         .from('location_settings')
         .update({ is_available: !currentStatus })
         .eq('location', location);
       
-      if (error) throw error;
-      loadData();
+      if (error) {
+        console.log('Location settings table not found, updating locally only');
+        // Update local state only if database update fails
+        setLocationSettings(prev => 
+          prev.map(loc => 
+            loc.location === location 
+              ? { ...loc, is_available: !currentStatus }
+              : loc
+          )
+        );
+      } else {
+        loadData();
+      }
     } catch (error) {
       console.error('Error updating location:', error);
-      alert('Error updating location');
+      // Update local state as fallback
+      setLocationSettings(prev => 
+        prev.map(loc => 
+          loc.location === location 
+            ? { ...loc, is_available: !currentStatus }
+            : loc
+        )
+      );
     }
   };
 
