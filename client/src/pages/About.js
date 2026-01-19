@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const About = () => {
   const [about, setAbout] = useState(null);
@@ -8,16 +8,20 @@ const About = () => {
   useEffect(() => {
     const fetchAbout = async () => {
       try {
-        const response = await axios.get('/api/about');
-        setAbout(response.data);
-      } catch (error) {
-        console.error('Error fetching about data:', error);
-        // Set default data if API fails
-        setAbout({
-          content: "Flame Cloud is a next-generation gaming server hosting platform built for speed, power, and reliability.",
-          founder_name: "Flame Founder",
-          founder_photo: null,
-          owner_name: "Flame Owner",
+        const { data, error } = await supabase
+          .from('about_content')
+          .select('*')
+          .limit(1);
+        
+        if (!error && data && data[0]) {
+          setAbout(data[0]);
+        } else {
+          // Set default data if API fails
+          setAbout({
+            content: "Flame Cloud is a next-generation gaming server hosting platform built for speed, power, and reliability.",
+            founder_name: "Flame Founder",
+            founder_photo: null,
+            owner_name: "Flame Owner",
           owner_photo: null,
           management_name: "Flame Management",
           management_photo: null

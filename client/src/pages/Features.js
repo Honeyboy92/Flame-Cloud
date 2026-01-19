@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const Features = () => {
   const [discordMembers, setDiscordMembers] = useState('400+');
 
   useEffect(() => {
-    axios.get('/api/plans/settings/discord_members').then(res => {
-      if (res.data.value) setDiscordMembers(res.data.value);
-    }).catch(() => {});
+    const fetchDiscordMembers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'discord_members')
+          .single();
+        
+        if (!error && data) {
+          setDiscordMembers(data.value);
+        }
+      } catch (err) {
+        console.error('Error fetching Discord members:', err);
+      }
+    };
+    
+    fetchDiscordMembers();
   }, []);
 
   const features = [

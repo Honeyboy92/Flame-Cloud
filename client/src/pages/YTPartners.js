@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const YTPartners = () => {
   const [partners, setPartners] = useState([]);
@@ -10,11 +10,11 @@ const YTPartners = () => {
     const loadData = async () => {
       try {
         const [partnersRes, settingRes] = await Promise.all([
-          axios.get('/api/plans/yt-partners'),
-          axios.get('/api/plans/settings/yt_partners_enabled')
+          supabase.from('yt_partners').select('*').order('sort_order'),
+          supabase.from('site_settings').select('value').eq('key', 'yt_partners_enabled').single()
         ]);
-        setPartners(partnersRes.data);
-        setIsEnabled(settingRes.data.value === '1');
+        setPartners(partnersRes.data || []);
+        setIsEnabled(settingRes.data?.value === '1');
       } catch (err) {
         // If error, default to disabled
         setIsEnabled(false);
