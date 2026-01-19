@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const Layout = () => {
   const { user, logout, updateUser } = useAuth();
@@ -22,9 +22,10 @@ const Layout = () => {
 
   useEffect(() => {
     if (user) {
-      if (!user.isAdmin) {
-        axios.get('/api/chat/admin').then(res => setAdminId(res.data?.id)).catch(() => {});
-      }
+      // Chat functionality temporarily disabled - will be updated to use Supabase later
+      // if (!user.isAdmin) {
+      //   axios.get('/api/chat/admin').then(res => setAdminId(res.data?.id)).catch(() => {});
+      // }
     }
   }, [user]);
 
@@ -41,27 +42,30 @@ const Layout = () => {
   }, [messages]);
 
   const loadMessages = () => {
-    const otherId = user.isAdmin ? selectedUser?.id : adminId;
-    if (otherId) {
-      axios.get(`/api/chat/messages/${otherId}`).then(res => {
-        setMessages(res.data);
-      });
-    }
+    // Chat functionality temporarily disabled
+    // const otherId = user.isAdmin ? selectedUser?.id : adminId;
+    // if (otherId) {
+    //   axios.get(`/api/chat/messages/${otherId}`).then(res => {
+    //     setMessages(res.data);
+    //   });
+    // }
   };
 
   const loadUsers = () => {
-    axios.get('/api/chat/users').then(res => setUsers(res.data));
+    // Chat functionality temporarily disabled
+    // axios.get('/api/chat/users').then(res => setUsers(res.data));
   };
 
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    const receiverId = user.isAdmin ? selectedUser?.id : adminId;
-    if (!receiverId) return;
-    
-    await axios.post('/api/chat/send', { receiverId, message: newMessage });
-    setNewMessage('');
-    loadMessages();
+    // Chat functionality temporarily disabled
+    // const receiverId = user.isAdmin ? selectedUser?.id : adminId;
+    // if (!receiverId) return;
+    // 
+    // await axios.post('/api/chat/send', { receiverId, message: newMessage });
+    // setNewMessage('');
+    // loadMessages();
   };
 
   const openUserList = () => {
@@ -76,8 +80,15 @@ const Layout = () => {
   };
 
   const openProfileModal = () => {
-    setProfileData({ email: user?.email || '', username: user?.username || '', currentPassword: '', newPassword: '', confirmPassword: '', avatar: user?.avatar || null });
-    setAvatarPreview(user?.avatar || null);
+    setProfileData({ 
+      email: user?.email || '', 
+      username: user?.user_metadata?.username || '', 
+      currentPassword: '', 
+      newPassword: '', 
+      confirmPassword: '', 
+      avatar: user?.user_metadata?.avatar || null 
+    });
+    setAvatarPreview(user?.user_metadata?.avatar || null);
     setProfileMessage({ type: '', text: '' });
     setShowProfileModal(true);
   };
@@ -100,22 +111,22 @@ const Layout = () => {
     setProfileMessage({ type: '', text: '' });
 
     try {
-      // Update username if changed
-      if (profileData.username && profileData.username !== user?.username) {
-        await axios.put('/api/auth/update-username', { username: profileData.username });
-        updateUser({ ...user, username: profileData.username });
+      // Update username in Supabase user metadata
+      if (profileData.username && profileData.username !== user?.user_metadata?.username) {
+        const { error } = await supabase.auth.updateUser({
+          data: { username: profileData.username }
+        });
+        if (error) throw error;
+        updateUser({ ...user, user_metadata: { ...user.user_metadata, username: profileData.username } });
       }
 
       // Update email if changed
       if (profileData.email && profileData.email !== user?.email) {
-        await axios.put('/api/auth/update-email', { email: profileData.email });
+        const { error } = await supabase.auth.updateUser({
+          email: profileData.email
+        });
+        if (error) throw error;
         updateUser({ ...user, email: profileData.email });
-      }
-
-      // Update avatar if changed
-      if (profileData.avatar !== user?.avatar) {
-        await axios.put('/api/auth/update-avatar', { avatar: profileData.avatar });
-        updateUser({ ...user, avatar: profileData.avatar });
       }
 
       // Update password if provided
@@ -125,15 +136,10 @@ const Layout = () => {
           setProfileLoading(false);
           return;
         }
-        if (!profileData.currentPassword) {
-          setProfileMessage({ type: 'error', text: 'Current password is required!' });
-          setProfileLoading(false);
-          return;
-        }
-        await axios.put('/api/auth/update-password', { 
-          currentPassword: profileData.currentPassword, 
-          newPassword: profileData.newPassword 
+        const { error } = await supabase.auth.updateUser({
+          password: profileData.newPassword
         });
+        if (error) throw error;
       }
 
       setProfileMessage({ type: 'success', text: '✅ Profile updated successfully!' });
