@@ -38,7 +38,7 @@ function App() {
         <Route path="yt-partners" element={<YTPartners />} />
         <Route path="features" element={<Features />} />
         <Route path="chat" element={<Chat />} />
-        <Route path="admin" element={user?.isAdmin ? <AdminPanel /> : <Navigate to="/dashboard" replace />} />
+        <Route path="admin" element={user?.user_metadata?.isAdmin ? <AdminPanel /> : <Navigate to="/dashboard" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

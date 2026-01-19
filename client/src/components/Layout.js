@@ -105,6 +105,18 @@ const Layout = () => {
     }
   };
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+        setProfileData({...profileData, avatar: reader.result});
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setProfileLoading(true);
@@ -118,6 +130,15 @@ const Layout = () => {
         });
         if (error) throw error;
         updateUser({ ...user, user_metadata: { ...user.user_metadata, username: profileData.username } });
+      }
+
+      // Update avatar if changed
+      if (profileData.avatar && profileData.avatar !== user?.user_metadata?.avatar) {
+        const { error } = await supabase.auth.updateUser({
+          data: { avatar: profileData.avatar }
+        });
+        if (error) throw error;
+        updateUser({ ...user, user_metadata: { ...user.user_metadata, avatar: profileData.avatar } });
       }
 
       // Update email if changed
@@ -467,7 +488,7 @@ const Layout = () => {
                   }}
                   onClick={() => document.getElementById('avatar-input').click()}
                 >
-                  {!avatarPreview && user?.username?.charAt(0).toUpperCase()}
+                  {!avatarPreview && user?.user_metadata?.username?.charAt(0).toUpperCase()}
                 </div>
                 <div 
                   style={{
