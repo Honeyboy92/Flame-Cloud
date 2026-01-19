@@ -246,7 +246,7 @@ const Layout = () => {
             <span>Chat</span>
           </NavLink>
 
-          {user?.isAdmin && (
+          {user?.user_metadata?.isAdmin && (
             <NavLink to="/admin" className={({isActive}) => `nav-item admin-item ${isActive ? 'active' : ''}`}>
               <div className="nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -263,10 +263,10 @@ const Layout = () => {
           {user ? (
             <>
               <div className="user-info" onClick={openProfileModal} style={{cursor: 'pointer'}}>
-                <div className="user-avatar" style={user?.avatar ? {background: `url(${user.avatar}) center/cover`} : {}}>
-                  {!user?.avatar && user?.username ? user.username.charAt(0).toUpperCase() : null}
+                <div className="user-avatar" style={user?.user_metadata?.avatar ? {background: `url(${user.user_metadata.avatar}) center/cover`} : {}}>
+                  {!user?.user_metadata?.avatar && user?.user_metadata?.username ? user.user_metadata.username.charAt(0).toUpperCase() : '🔥'}
                 </div>
-                <span className="user-name">{user?.username}</span>
+                <span className="user-name">{user?.user_metadata?.username || user?.email}</span>
               </div>
               <button className="logout-btn" onClick={logout}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -305,7 +305,7 @@ const Layout = () => {
         </a>
 
         {/* Client Chat Button (for users) / Users Button (for admin) */}
-        {user?.isAdmin ? (
+        {user?.user_metadata?.isAdmin ? (
           <button className="float-btn users-btn" onClick={() => navigate('/chat')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -366,7 +366,7 @@ const Layout = () => {
         <div className="chat-modal-overlay" onClick={() => { setShowChat(false); setSelectedUser(null); }}>
           <div className="chat-modal" onClick={e => e.stopPropagation()}>
             <div className="chat-header">
-              {user?.isAdmin ? (
+              {user?.user_metadata?.isAdmin ? (
                 <>
                   <div className="chat-header-info">
                     <div className="chat-avatar" style={selectedUser?.avatar ? {background: `url(${selectedUser.avatar}) center/cover`} : {}}>{!selectedUser?.avatar && selectedUser?.username?.charAt(0).toUpperCase()}</div>
@@ -401,8 +401,8 @@ const Layout = () => {
                   return (
                     <div key={msg.id} className={`chat-message ${msg.senderId === user.id ? 'sent' : 'received'}`} style={{paddingTop: showAvatar ? '8px' : '2px'}}>
                       {showAvatar && msg.senderId !== user.id && (
-                        <div className="message-avatar" style={msg.senderAvatar ? {background: `url(${msg.senderAvatar}) center/cover`} : {background: user?.isAdmin ? '#5865f2' : 'linear-gradient(135deg, #FF2E00, #FF6A00)'}}>
-                          {!msg.senderAvatar && (user?.isAdmin ? selectedUser?.username?.charAt(0).toUpperCase() : '🔥')}
+                        <div className="message-avatar" style={msg.senderAvatar ? {background: `url(${msg.senderAvatar}) center/cover`} : {background: user?.user_metadata?.isAdmin ? '#5865f2' : 'linear-gradient(135deg, #FF2E00, #FF6A00)'}}>
+                          {!msg.senderAvatar && (user?.user_metadata?.isAdmin ? selectedUser?.username?.charAt(0).toUpperCase() : '🔥')}
                         </div>
                       )}
                       {showAvatar && msg.senderId === user.id && (
@@ -413,7 +413,7 @@ const Layout = () => {
                       <div className="message-bubble" style={{paddingLeft: showAvatar ? '0' : '0'}}>
                         {showAvatar && (
                           <span className="message-sender">
-                            {msg.senderId === user.id ? user?.username : (user?.isAdmin ? selectedUser?.username : 'Flame Cloud Support')}
+                            {msg.senderId === user.id ? user?.user_metadata?.username : (user?.user_metadata?.isAdmin ? selectedUser?.username : 'Flame Cloud Support')}
                             <span className="message-time">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                           </span>
                         )}
