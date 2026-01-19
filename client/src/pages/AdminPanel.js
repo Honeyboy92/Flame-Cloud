@@ -69,7 +69,11 @@ const AdminPanel = () => {
 
   const handleAboutUpdate = async () => {
     try {
-      await axios.put('/api/admin/about', about);
+      const { error } = await supabase
+        .from('about_content')
+        .upsert(about);
+      
+      if (error) throw error;
       alert('About section updated successfully!');
     } catch (error) {
       console.error('Error updating about:', error);
@@ -78,37 +82,89 @@ const AdminPanel = () => {
   };
 
   const handleSavePlan = async (type) => {
-    if (form.id) {
-      await axios.put(`/api/admin/paid-plans/${form.id}`, form);
-    } else {
-      await axios.post(`/api/admin/paid-plans`, form);
+    try {
+      if (form.id) {
+        const { error } = await supabase
+          .from('paid_plans')
+          .update(form)
+          .eq('id', form.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('paid_plans')
+          .insert([form]);
+        if (error) throw error;
+      }
+      setModal(null);
+      loadData();
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      alert('Error saving plan');
     }
-    setModal(null);
-    loadData();
   };
 
   const handleQuickDiscount = async (plan, discount) => {
-    await axios.put(`/api/admin/paid-plans/${plan.id}`, { ...plan, discount: parseInt(discount) || 0 });
-    loadData();
+    try {
+      const { error } = await supabase
+        .from('paid_plans')
+        .update({ discount: parseInt(discount) || 0 })
+        .eq('id', plan.id);
+      
+      if (error) throw error;
+      loadData();
+    } catch (error) {
+      console.error('Error updating discount:', error);
+      alert('Error updating discount');
+    }
   };
 
   const handleDeletePlan = async (type, id) => {
     if (!window.confirm('Delete this plan?')) return;
-    await axios.delete(`/api/admin/paid-plans/${id}`);
-    loadData();
+    try {
+      const { error } = await supabase
+        .from('paid_plans')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      loadData();
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+      alert('Error deleting plan');
+    }
   };
 
   const handleTicketUpdate = async (id, status, response) => {
-    await axios.put(`/api/admin/tickets/${id}`, { status, adminResponse: response });
-    setModal(null);
-    loadData();
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status, admin_response: response })
+        .eq('id', id);
+      
+      if (error) throw error;
+      setModal(null);
+      loadData();
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      alert('Error updating ticket');
+    }
   };
 
 
 
   const handleLocationToggle = async (location, currentStatus) => {
-    await axios.put(`/api/admin/locations/${location}`, { isAvailable: !currentStatus });
-    loadData();
+    try {
+      const { error } = await supabase
+        .from('location_settings')
+        .update({ is_available: !currentStatus })
+        .eq('location', location);
+      
+      if (error) throw error;
+      loadData();
+    } catch (error) {
+      console.error('Error updating location:', error);
+      alert('Error updating location');
+    }
   };
 
   const openPlanModal = (plan = null) => {
@@ -127,24 +183,55 @@ const AdminPanel = () => {
   };
 
   const handleSaveYtPartner = async () => {
-    if (form.id) {
-      await axios.put(`/api/admin/yt-partners/${form.id}`, form);
-    } else {
-      await axios.post('/api/admin/yt-partners', form);
+    try {
+      if (form.id) {
+        const { error } = await supabase
+          .from('yt_partners')
+          .update(form)
+          .eq('id', form.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('yt_partners')
+          .insert([form]);
+        if (error) throw error;
+      }
+      setModal(null);
+      loadData();
+    } catch (error) {
+      console.error('Error saving YT partner:', error);
+      alert('Error saving YT partner');
     }
-    setModal(null);
-    loadData();
   };
 
   const handleDeleteYtPartner = async (id) => {
     if (!window.confirm('Delete this partner?')) return;
-    await axios.delete(`/api/admin/yt-partners/${id}`);
-    loadData();
+    try {
+      const { error } = await supabase
+        .from('yt_partners')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      loadData();
+    } catch (error) {
+      console.error('Error deleting YT partner:', error);
+      alert('Error deleting YT partner');
+    }
   };
 
   const handleYtPartnersToggle = async () => {
-    await axios.put('/api/admin/settings/yt_partners_enabled', { value: ytPartnersEnabled ? '0' : '1' });
-    setYtPartnersEnabled(!ytPartnersEnabled);
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert({ key: 'yt_partners_enabled', value: ytPartnersEnabled ? '0' : '1' });
+      
+      if (error) throw error;
+      setYtPartnersEnabled(!ytPartnersEnabled);
+    } catch (error) {
+      console.error('Error toggling YT partners:', error);
+      alert('Error toggling YT partners');
+    }
   };
 
   // Drag & Drop handlers for YT Partners
@@ -173,9 +260,10 @@ const AdminPanel = () => {
     setYtPartners(newPartners);
     setDraggedItem(null);
 
-    // Save new order to server
-    const orderedIds = newPartners.map(p => p.id);
-    await axios.put('/api/admin/yt-partners-reorder', { orderedIds });
+    // YT Partners reordering - temporarily disabled
+    // const orderedIds = newPartners.map(p => p.id);
+    // await supabase.from('yt_partners').update({ sort_order: ... }); // Complex reordering logic needed
+    console.log('YT Partners reordering temporarily disabled');
   };
 
   const handleDragEnd = () => {
@@ -582,8 +670,14 @@ const AdminPanel = () => {
                           style={{padding: '6px 12px', fontSize: '0.85rem'}}
                           onClick={async () => {
                             if (window.confirm(`Delete user ${u.username}?`)) {
-                              await axios.delete(`/api/admin/users/${u.id}`);
-                              loadData();
+                              try {
+                                // Note: Supabase Auth users can't be deleted via client SDK
+                                // This would need to be handled via Supabase Admin API
+                                alert('User deletion temporarily disabled - contact admin');
+                              } catch (error) {
+                                console.error('Error deleting user:', error);
+                                alert('Error deleting user');
+                              }
                             }
                           }}
                         >
