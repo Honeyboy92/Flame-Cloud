@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,11 +33,32 @@ const PaidPlans = () => {
   };
 
   useEffect(() => {
-    axios.get('/api/plans/paid').then(res => setPlans(res.data));
-    axios.get('/api/plans/locations').then(res => setLocationSettings(res.data));
-    axios.get('/api/plans/settings/discord_members').then(res => {
-      if (res.data.value) setDiscordMembers(res.data.value);
-    }).catch(() => {});
+    // Fetch paid plans from Supabase
+    const fetchPlans = async () => {
+      const { data, error } = await supabase
+        .from('paid_plans')
+        .select('*')
+        .order('sort_order');
+      
+      if (!error && data) {
+        setPlans(data);
+      }
+    };
+
+    // Fetch settings
+    const fetchSettings = async () => {
+      const { data } = await supabase
+        .from('site_settings')
+        .select('*')
+        .eq('key', 'discord_members');
+      
+      if (data && data[0]) {
+        setDiscordMembers(data[0].value);
+      }
+    };
+
+    fetchPlans();
+    fetchSettings();
   }, []);
 
   const isLocationAvailable = (location) => {
