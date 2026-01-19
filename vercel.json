@@ -10,12 +10,27 @@
       "dest": "/static/$1"
     },
     {
-      "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp))",
+      "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp|js|css))",
       "dest": "/$1"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
     },
     {
       "src": "/(.*)",
       "dest": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }
