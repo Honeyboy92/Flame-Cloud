@@ -109,11 +109,23 @@ const PaidPlans = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64Image = reader.result;
-        await axios.post('/api/tickets', {
-          subject: `Plan Order: ${selectedPlan.name}`,
-          message: `Plan: ${selectedPlan.name}\nRAM: ${selectedPlan.ram}\nCPU: ${selectedPlan.cpu}\nPrice: ${selectedPlan.price}\n\nPayment Screenshot Attached`,
-          screenshot: base64Image
-        });
+        
+        // Create ticket using Supabase
+        const { data, error } = await supabase
+          .from('tickets')
+          .insert([{
+            user_id: user.id,
+            subject: `Plan Order: ${selectedPlan.name}`,
+            message: `Plan: ${selectedPlan.name}\nRAM: ${selectedPlan.ram}\nCPU: ${selectedPlan.cpu}\nPrice: ${selectedPlan.price}\n\nPayment Screenshot Attached`,
+            screenshot: base64Image,
+            status: 'pending'
+          }])
+          .select();
+        
+        if (error) {
+          throw error;
+        }
+        
         setSuccess('✅ Order submitted successfully! We will verify and activate your server within 24 hours.');
         setScreenshot(null);
         setScreenshotPreview(null);
@@ -121,6 +133,7 @@ const PaidPlans = () => {
       reader.readAsDataURL(screenshot);
     } catch (err) {
       alert('Error submitting order. Please try again.');
+      console.error('Order submission error:', err);
     } finally {
       setLoading(false);
     }

@@ -29,9 +29,10 @@ const Login = () => {
     setLoading(true);
     try {
       const user = await login(email, password);
-      navigate(user.isAdmin ? '/admin' : '/dashboard');
+      // For now, navigate to dashboard - admin check can be added later
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid credentials. Please try again.');
+      setError(err.message || 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const AdminPanel = () => {
   const [tab, setTab] = useState('tickets');
@@ -21,29 +21,50 @@ const AdminPanel = () => {
   }, []);
 
   const loadData = async () => {
-    const [paid, usersRes, ticketsRes, aboutRes, locationsRes, ytRes, ytEnabledRes, discordRes] = await Promise.all([
-      axios.get('/api/admin/paid-plans'),
-      axios.get('/api/admin/users'),
-      axios.get('/api/admin/tickets'),
-      axios.get('/api/admin/about'),
-      axios.get('/api/admin/locations'),
-      axios.get('/api/admin/yt-partners'),
-      axios.get('/api/admin/settings/yt_partners_enabled'),
-      axios.get('/api/admin/settings/discord_members')
-    ]);
-    setPaidPlans(paid.data);
-    setUsers(usersRes.data);
-    setTickets(ticketsRes.data);
-    setAbout(aboutRes.data);
-    setLocationSettings(locationsRes.data);
-    setYtPartners(ytRes.data);
-    setYtPartnersEnabled(ytEnabledRes.data.value === '1');
-    setDiscordMembers(discordRes.data.value || '400+');
+    try {
+      // Load all data from Supabase
+      const [paidPlansRes, usersRes, ticketsRes, aboutRes, locationsRes, ytRes, settingsRes] = await Promise.all([
+        supabase.from('paid_plans').select('*').order('sort_order'),
+        supabase.from('users').select('*').order('created_at', { ascending: false }),
+        supabase.from('tickets').select('*').order('created_at', { ascending: false }),
+        supabase.from('about_content').select('*').limit(1),
+        supabase.from('location_settings').select('*'),
+        supabase.from('yt_partners').select('*').order('sort_order'),
+        supabase.from('site_settings').select('*')
+      ]);
+      
+      setPaidPlans(paidPlansRes.data || []);
+      setUsers(usersRes.data || []);
+      setTickets(ticketsRes.data || []);
+      setAbout((aboutRes.data && aboutRes.data[0]) || {});
+      setLocationSettings(locationsRes.data || []);
+      setYtPartners(ytRes.data || []);
+      
+      // Process settings
+      const settings = settingsRes.data || [];
+      const ytSetting = settings.find(s => s.key === 'yt_partners_enabled');
+      const discordSetting = settings.find(s => s.key === 'discord_members');
+      
+      setYtPartnersEnabled(ytSetting?.value === '1');
+      setDiscordMembers(discordSetting?.value || '400+');
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
   };
 
   const handleDiscordMembersUpdate = async () => {
-    await axios.put('/api/admin/settings/discord_members', { value: discordMembers });
-    alert('Discord members updated!');
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert({ key: 'discord_members', value: discordMembers });
+      
+      if (error) throw error;
+      alert('Discord members updated!');
+    } catch (error) {
+      console.error('Error updating Discord members:', error);
+      alert('Error updating Discord members');
+    }
   };
 
   const handleAboutUpdate = async () => {
