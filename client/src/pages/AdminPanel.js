@@ -570,15 +570,15 @@ const AdminPanel = () => {
                 </div>
                 
                 <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                  <span className={`badge ${loc.isAvailable ? 'badge-approved' : 'badge-pending'}`}>
-                    {loc.isAvailable ? 'Available' : 'Coming Soon'}
+                  <span className={`badge ${loc.is_available ? 'badge-approved' : 'badge-pending'}`}>
+                    {loc.is_available ? 'Available' : 'Coming Soon'}
                   </span>
                   <button 
-                    className={`btn ${loc.isAvailable ? 'btn-danger' : 'btn-success'}`}
-                    onClick={() => handleLocationToggle(loc.location, loc.isAvailable)}
+                    className={`btn ${loc.is_available ? 'btn-danger' : 'btn-success'}`}
+                    onClick={() => handleLocationToggle(loc.location, loc.is_available)}
                     style={{minWidth: '120px'}}
                   >
-                    {loc.isAvailable ? '❌ Disable' : '✅ Enable'}
+                    {loc.is_available ? '❌ Disable' : '✅ Enable'}
                   </button>
                 </div>
               </div>

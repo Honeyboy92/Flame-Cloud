@@ -45,6 +45,33 @@ const PaidPlans = () => {
       }
     };
 
+    // Fetch location settings
+    const fetchLocationSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('location_settings')
+          .select('*');
+        
+        if (!error && data) {
+          setLocationSettings(data);
+        } else {
+          // Fallback to default locations
+          setLocationSettings([
+            { location: 'UAE', is_available: true },
+            { location: 'France', is_available: false },
+            { location: 'Singapore', is_available: false }
+          ]);
+        }
+      } catch (err) {
+        console.log('Using default location settings');
+        setLocationSettings([
+          { location: 'UAE', is_available: true },
+          { location: 'France', is_available: false },
+          { location: 'Singapore', is_available: false }
+        ]);
+      }
+    };
+
     // Fetch settings
     const fetchSettings = async () => {
       const { data } = await supabase
@@ -58,12 +85,13 @@ const PaidPlans = () => {
     };
 
     fetchPlans();
+    fetchLocationSettings();
     fetchSettings();
   }, []);
 
   const isLocationAvailable = (location) => {
     const loc = locationSettings.find(l => l.location === location);
-    return loc ? Boolean(loc.isAvailable) : false;
+    return loc ? Boolean(loc.is_available) : false;
   };
 
   const handlePlanClick = (plan) => {
