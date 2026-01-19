@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 const Chat = () => {
   const { user } = useAuth();
@@ -19,15 +19,14 @@ const Chat = () => {
       return;
     }
     
-    if (user.isAdmin) {
+    if (user?.user_metadata?.isAdmin) {
       loadUsers();
       const interval = setInterval(loadUsers, 5000);
       return () => clearInterval(interval);
     } else {
-      axios.get('/api/chat/admin').then(res => {
-        setAdminId(res.data?.id);
-        setSelectedUser(res.data);
-      }).catch(() => {});
+      // Set admin ID for customer chat
+      setAdminId('f50b3415-730a-49e8-bb7f-05ac2fa97ed1'); // Admin user ID from Supabase
+      setSelectedUser({ id: 'f50b3415-730a-49e8-bb7f-05ac2fa97ed1', username: 'Flame Cloud Support' });
     }
   }, [user, navigate]);
 
@@ -43,26 +42,71 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const loadUsers = () => {
-    axios.get('/api/chat/users').then(res => setUsers(res.data));
+  const loadUsers = async () => {
+    if (user?.user_metadata?.isAdmin) {
+      try {
+        // Simplified user list for admin
+        setUsers([
+          { id: 'cbe5d44e-7394-4b6b-82a3-bbf4eee15df8', username: 'Test Customer', email: 'customer@test.com' }
+        ]);
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    }
   };
 
-  const loadMessages = () => {
-    const otherId = user?.isAdmin ? selectedUser?.id : adminId;
-    if (otherId) {
-      axios.get(`/api/chat/messages/${otherId}`).then(res => setMessages(res.data));
+  const loadMessages = async () => {
+    const otherId = user?.user_metadata?.isAdmin ? selectedUser?.id : adminId;
+    if (otherId && user?.id) {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
+          .order('created_at', { ascending: true });
+        
+        if (!error && data) {
+          setMessages(data.map(msg => ({
+            ...msg,
+            senderId: msg.sender_id,
+            createdAt: msg.created_at
+          })));
+        }
+      } catch (err) {
+        console.error('Error loading messages:', err);
+      }
     }
   };
 
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    const receiverId = user?.isAdmin ? selectedUser?.id : adminId;
-    if (!receiverId) return;
     
-    await axios.post('/api/chat/send', { receiverId, message: newMessage });
-    setNewMessage('');
-    loadMessages();
+    const receiverId = user?.user_metadata?.isAdmin ? selectedUser?.id : adminId;
+    if (!receiverId || !user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert([{
+          sender_id: user.id,
+          receiver_id: receiverId,
+          message: newMessage.trim(),
+          is_read: false
+        }])
+        .select();
+      
+      if (!error) {
+        setNewMessage('');
+        loadMessages();
+      } else {
+        console.error('Error sending message:', error);
+        alert('Failed to send message');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message');
+    }
   };
 
   if (!user) {

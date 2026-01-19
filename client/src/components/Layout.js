@@ -22,10 +22,10 @@ const Layout = () => {
 
   useEffect(() => {
     if (user) {
-      // Chat functionality temporarily disabled - will be updated to use Supabase later
-      // if (!user.isAdmin) {
-      //   axios.get('/api/chat/admin').then(res => setAdminId(res.data?.id)).catch(() => {});
-      // }
+      // Set admin ID for chat (using hardcoded admin user ID from Supabase)
+      if (!user.user_metadata?.isAdmin) {
+        setAdminId('f50b3415-730a-49e8-bb7f-05ac2fa97ed1'); // Admin user ID from Supabase
+      }
     }
   }, [user]);
 
@@ -41,31 +41,76 @@ const Layout = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const loadMessages = () => {
-    // Chat functionality temporarily disabled
-    // const otherId = user.isAdmin ? selectedUser?.id : adminId;
-    // if (otherId) {
-    //   axios.get(`/api/chat/messages/${otherId}`).then(res => {
-    //     setMessages(res.data);
-    //   });
-    // }
+  const loadMessages = async () => {
+    const otherId = user?.user_metadata?.isAdmin ? selectedUser?.id : adminId;
+    if (otherId && user?.id) {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
+          .order('created_at', { ascending: true });
+        
+        if (!error && data) {
+          setMessages(data);
+        }
+      } catch (err) {
+        console.error('Error loading messages:', err);
+      }
+    }
   };
 
-  const loadUsers = () => {
-    // Chat functionality temporarily disabled
-    // axios.get('/api/chat/users').then(res => setUsers(res.data));
+  const loadUsers = async () => {
+    if (user?.user_metadata?.isAdmin) {
+      try {
+        // Get all users who have sent messages (simplified approach)
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('sender_id')
+          .neq('sender_id', user.id);
+        
+        if (!error && data) {
+          // For now, just show a placeholder user list
+          // In a full implementation, you'd fetch user details from auth.users
+          setUsers([
+            { id: 'customer-1', username: 'Customer', email: 'customer@test.com' }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    }
   };
 
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    // Chat functionality temporarily disabled
-    // const receiverId = user.isAdmin ? selectedUser?.id : adminId;
-    // if (!receiverId) return;
-    // 
-    // await axios.post('/api/chat/send', { receiverId, message: newMessage });
-    // setNewMessage('');
-    // loadMessages();
+    
+    const receiverId = user?.user_metadata?.isAdmin ? selectedUser?.id : adminId;
+    if (!receiverId || !user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert([{
+          sender_id: user.id,
+          receiver_id: receiverId,
+          message: newMessage.trim(),
+          is_read: false
+        }])
+        .select();
+      
+      if (!error) {
+        setNewMessage('');
+        loadMessages();
+      } else {
+        console.error('Error sending message:', error);
+        alert('Failed to send message');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message');
+    }
   };
 
   const openUserList = () => {
