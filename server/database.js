@@ -88,8 +88,6 @@ if (process.env.DATABASE_URL) {
       )
     `);
 
-
-
     db.run(`
       CREATE TABLE IF NOT EXISTS location_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,10 +133,10 @@ if (process.env.DATABASE_URL) {
     const adminExists = db.exec("SELECT * FROM users WHERE isAdmin = 1");
     if (adminExists.length === 0 || adminExists[0].values.length === 0) {
       const adminEmail = process.env.ADMIN_EMAIL || 'flamecloud@gmail.com';
-      const adminPassword = process.env.ADMIN_PASSWORD || 'flamecloud999';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'GSFY!25V$';
       const hashedPassword = bcrypt.hashSync(adminPassword, 10);
       db.run("INSERT INTO users (username, email, password, isAdmin) VALUES (?, ?, ?, ?)", 
-        ['Flame Cloud Team', adminEmail, hashedPassword, 1]);
+        ['Flame Cloud Admin', adminEmail, hashedPassword, 1]);
     }
 
     // Initialize location settings
@@ -165,8 +163,6 @@ if (process.env.DATABASE_URL) {
         'Flame Management'
       ]);
     }
-
-
 
     // Initialize default paid plans
     const plansExist = db.exec("SELECT * FROM paid_plans");

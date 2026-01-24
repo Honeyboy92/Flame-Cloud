@@ -4,6 +4,12 @@ const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Get all paid plans (generic endpoint)
+router.get('/', (req, res) => {
+  const plans = prepare('SELECT * FROM paid_plans ORDER BY sortOrder').all();
+  res.json(plans);
+});
+
 router.get('/paid', (req, res) => {
   const plans = prepare('SELECT * FROM paid_plans ORDER BY sortOrder').all();
   res.json(plans);
@@ -84,6 +90,21 @@ router.get('/yt-partners', (req, res) => {
 router.get('/settings/:key', (req, res) => {
   const setting = prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
   res.json(setting || { key: req.params.key, value: '0' });
+});
+
+// Create an order/ticket for a paid plan (uses app SQLite DB so admin can see it)
+router.post('/order', authMiddleware, (req, res) => {
+  const { subject, message, screenshot } = req.body;
+  if (!subject || !message) return res.status(400).json({ error: 'Subject and message required' });
+
+  try {
+    prepare('INSERT INTO tickets (userId, subject, message, screenshot, status) VALUES (?, ?, ?, ?, ?)')
+      .run(req.user.id, subject, message, screenshot || null, 'pending');
+    res.json({ message: 'Order submitted successfully' });
+  } catch (err) {
+    console.error('Error creating order:', err);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
 });
 
 module.exports = router;

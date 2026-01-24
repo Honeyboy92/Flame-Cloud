@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const Tickets = () => {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [subject, setSubject] = useState('');
@@ -13,8 +14,16 @@ const Tickets = () => {
     loadTickets();
   }, []);
 
-  const loadTickets = () => {
-    axios.get('/api/tickets').then(res => setTickets(res.data));
+  const loadTickets = async () => {
+    try {
+      const res = await fetch('/api/tickets');
+      if (res.ok) {
+        const data = await res.json();
+        setTickets(data);
+      }
+    } catch (err) {
+      console.error('Error loading tickets:', err);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -25,16 +34,32 @@ const Tickets = () => {
     }
     setLoading(true);
     try {
-      await axios.post('/api/tickets', { subject, message });
-      setShowModal(false);
-      setSubject('');
-      setMessage('');
-      loadTickets();
-      alert('✅ Ticket created successfully!');
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, message })
+      });
+
+      if (res.ok) {
+        setShowModal(false);
+        setSubject('');
+        setMessage('');
+        loadTickets();
+      }
     } catch (err) {
-      alert('Error creating ticket');
+      console.error('Error creating ticket:', err);
+      alert('Failed to create ticket');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'pending': return '#FF6A00';
+      case 'in-progress': return '#FFD000';
+      case 'resolved': return '#10b981';
+      default: return '#FF6A00';
     }
   };
 
@@ -42,56 +67,57 @@ const Tickets = () => {
     <div>
       <div className="page-header">
         <h2>🎫 Support Tickets</h2>
-        <p>Create and track your support requests</p>
+        <p>Track your support requests</p>
       </div>
 
-      <div style={{marginBottom: '24px'}}>
+      <div style={{marginBottom: '20px'}}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           ➕ Create New Ticket
         </button>
       </div>
 
       {tickets.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="icon">🎫</div>
-            <h3>No Tickets Yet</h3>
-            <p style={{color: 'var(--text-muted)', marginTop: '12px'}}>
-              Need help? Create a support ticket and we'll get back to you!
-            </p>
-          </div>
+        <div className="empty-state">
+          <div className="icon">🎫</div>
+          <h3>No Tickets Yet</h3>
+          <p>Create a ticket to get support from our team</p>
         </div>
       ) : (
-        <div className="card">
-          <h3>📋 Your Tickets ({tickets.length})</h3>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Subject</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Actions</th>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map(ticket => (
+                <tr key={ticket.id}>
+                  <td>#{ticket.id}</td>
+                  <td>{ticket.subject}</td>
+                  <td>
+                    <span className="badge" style={{borderColor: getStatusColor(ticket.status), color: getStatusColor(ticket.status)}}>
+                      {ticket.status}
+                    </span>
+                  </td>
+                  <td>{new Date(ticket.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setSelectedTicket(ticket)}
+                      style={{padding: '6px 12px', fontSize: '0.85rem'}}
+                    >
+                      View
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {tickets.map(ticket => (
-                  <tr key={ticket.id}>
-                    <td style={{color: 'var(--primary-light)', fontWeight: '700'}}>#{ticket.id}</td>
-                    <td>{ticket.subject}</td>
-                    <td><span className={`badge badge-${ticket.status}`}>{ticket.status}</span></td>
-                    <td style={{color: 'var(--text-muted)'}}>{new Date(ticket.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      <button className="btn btn-secondary" style={{padding: '8px 16px'}} onClick={() => setSelectedTicket(ticket)}>
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -99,30 +125,33 @@ const Tickets = () => {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>🎫 Create New Ticket</h3>
+            <h3>🎫 Create Support Ticket</h3>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Subject</label>
-                <input 
-                  type="text" 
-                  value={subject} 
+                <input
+                  type="text"
+                  value={subject}
                   onChange={e => setSubject(e.target.value)}
-                  placeholder="e.g., Server Issue, Payment Query, etc."
+                  placeholder="Brief description of your issue"
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Message</label>
-                <textarea 
-                  value={message} 
+                <textarea
+                  value={message}
                   onChange={e => setMessage(e.target.value)}
-                  placeholder="Describe your issue or question in detail..."
-                  rows={5}
+                  placeholder="Describe your issue in detail"
+                  required
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-success" disabled={loading}>
-                  {loading ? '⏳ Creating...' : '✅ Submit Ticket'}
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Ticket'}
                 </button>
               </div>
             </form>
@@ -135,31 +164,32 @@ const Tickets = () => {
         <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3>🎫 Ticket #{selectedTicket.id}</h3>
-            
-            <div style={{background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.05))', padding: '20px', borderRadius: '16px', marginBottom: '20px', border: '1px solid var(--glass-border)'}}>
-              <p><strong style={{color: 'var(--text-muted)'}}>Subject:</strong> <span style={{color: 'var(--primary-light)'}}>{selectedTicket.subject}</span></p>
-              <p style={{marginTop: '8px'}}><strong style={{color: 'var(--text-muted)'}}>Status:</strong> <span className={`badge badge-${selectedTicket.status}`}>{selectedTicket.status}</span></p>
-              <p style={{marginTop: '8px'}}><strong style={{color: 'var(--text-muted)'}}>Date:</strong> <span style={{color: 'var(--text-secondary)'}}>{new Date(selectedTicket.createdAt).toLocaleString()}</span></p>
+            <div style={{background: 'rgba(255, 106, 0, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px'}}>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Subject</p>
+              <p style={{color: 'var(--text-primary)', fontWeight: '600', marginBottom: '16px'}}>{selectedTicket.subject}</p>
+              
+              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Status</p>
+              <span className="badge" style={{borderColor: getStatusColor(selectedTicket.status), color: getStatusColor(selectedTicket.status)}}>
+                {selectedTicket.status}
+              </span>
             </div>
 
-            <div style={{marginBottom: '20px'}}>
-              <label style={{color: 'var(--text-muted)', fontWeight: '600', display: 'block', marginBottom: '10px'}}>Your Message:</label>
-              <div style={{background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)'}}>
-                {selectedTicket.message}
-              </div>
+            <div style={{background: 'rgba(0, 0, 0, 0.2)', padding: '16px', borderRadius: '12px', marginBottom: '20px'}}>
+              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Your Message</p>
+              <p style={{color: 'var(--text-primary)', lineHeight: '1.6'}}>{selectedTicket.message}</p>
             </div>
 
             {selectedTicket.adminResponse && (
-              <div style={{marginBottom: '20px'}}>
-                <label style={{color: 'var(--success)', fontWeight: '600', display: 'block', marginBottom: '10px'}}>🔥 Admin Response:</label>
-                <div style={{background: 'rgba(16, 185, 129, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--text-primary)'}}>
-                  {selectedTicket.adminResponse}
-                </div>
+              <div style={{background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid rgba(16, 185, 129, 0.2)'}}>
+                <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Admin Response</p>
+                <p style={{color: 'var(--text-primary)', lineHeight: '1.6'}}>{selectedTicket.adminResponse}</p>
               </div>
             )}
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setSelectedTicket(null)}>Close</button>
+              <button className="btn btn-secondary" onClick={() => setSelectedTicket(null)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

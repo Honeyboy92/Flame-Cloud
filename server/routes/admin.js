@@ -14,6 +14,27 @@ router.get('/users', (req, res) => {
   res.json(users);
 });
 
+// Update user (admin)
+router.put('/users/:id', (req, res) => {
+  const userId = req.params.id;
+  const { username, avatar } = req.body;
+  const updates = [];
+  if (username) updates.push({ k: 'username', v: username });
+  if (typeof avatar !== 'undefined') updates.push({ k: 'avatar', v: avatar });
+
+  try {
+    if (updates.length === 0) return res.status(400).json({ error: 'No updates provided' });
+    updates.forEach(u => {
+      prepare(`UPDATE users SET ${u.k}=? WHERE id=?`).run(u.v, userId);
+    });
+    const updated = prepare('SELECT id, username, email, avatar, isAdmin, createdAt FROM users WHERE id = ?').get(userId);
+    res.json({ message: 'User updated', user: updated });
+  } catch (err) {
+    console.error('Error updating user:', err);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
 // Delete user
 router.delete('/users/:id', (req, res) => {
   const userId = req.params.id;
@@ -55,6 +76,37 @@ router.put('/paid-plans/:id', (req, res) => {
 router.delete('/paid-plans/:id', (req, res) => {
   prepare('DELETE FROM paid_plans WHERE id=?').run(req.params.id);
   res.json({ message: 'Plan deleted' });
+});
+
+// Restore default paid plans (admin only)
+router.post('/paid-plans/restore-defaults', (req, res) => {
+  const existing = prepare('SELECT name FROM paid_plans').all().map(r => r.name.toLowerCase());
+  const defaults = [
+    { name: 'Bronze Plan', ram: '2GB', cpu: '100%', storage: '10 GB SSD', location: 'UAE', price: '200 PKR' },
+    { name: 'Silver Plan', ram: '4GB', cpu: '150%', storage: '20 GB SSD', location: 'UAE', price: '400 PKR' },
+    { name: 'Gold Plan', ram: '8GB', cpu: '250%', storage: '30 GB SSD', location: 'UAE', price: '600 PKR' },
+    { name: 'Platinum Plan', ram: '10GB', cpu: '300%', storage: '40 GB SSD', location: 'UAE', price: '800 PKR' },
+    { name: 'Emerald Plan', ram: '12GB', cpu: '350%', storage: '50 GB SSD', location: 'UAE', price: '1200 PKR' },
+    { name: 'Amethyst Plan', ram: '14GB', cpu: '400%', storage: '60 GB SSD', location: 'UAE', price: '3600 PKR' },
+    { name: 'Diamond Plan', ram: '16GB', cpu: '500%', storage: '80 GB SSD', location: 'UAE', price: '1600 PKR' },
+    { name: 'Ruby Plan', ram: '32GB', cpu: '1000%', storage: '100 GB SSD', location: 'UAE', price: '3200 PKR' },
+    { name: 'Black Ruby Plan', ram: '34GB', cpu: '2000%', storage: '200 GB SSD', location: 'UAE', price: '3400 PKR' }
+  ];
+
+  // Insert missing defaults preserving order
+  let inserted = 0;
+  defaults.forEach((p, idx) => {
+    if (!existing.includes(p.name.toLowerCase())) {
+      // Determine next sortOrder
+      const maxOrder = prepare('SELECT MAX(sortOrder) as maxOrder FROM paid_plans').get();
+      const newOrder = (maxOrder && maxOrder.maxOrder) ? maxOrder.maxOrder + 1 : idx + 1;
+      prepare('INSERT INTO paid_plans (name, ram, cpu, storage, location, price, discount, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(p.name, p.ram, p.cpu, p.storage, p.location, p.price, 0, newOrder);
+      inserted++;
+    }
+  });
+
+  res.json({ message: `Defaults restored, inserted ${inserted} plans` });
 });
 
 // Free Plans CRUD
@@ -168,9 +220,9 @@ router.get('/locations', (req, res) => {
   res.json(locations);
 });
 
-router.put('/locations/:location', (req, res) => {
+router.put('/locations/:id', (req, res) => {
   const { isAvailable } = req.body;
-  prepare('UPDATE location_settings SET isAvailable=? WHERE location=?').run(isAvailable ? 1 : 0, req.params.location);
+  prepare('UPDATE location_settings SET isAvailable=? WHERE id=?').run(isAvailable ? 1 : 0, req.params.id);
   res.json({ message: 'Location updated' });
 });
 

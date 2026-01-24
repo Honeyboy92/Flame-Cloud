@@ -1,234 +1,89 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
 
 const Layout = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
-  const [showChat, setShowChat] = useState(false);
-  const [showUserList, setShowUserList] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [adminId, setAdminId] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [profileData, setProfileData] = useState({ email: '', username: '', currentPassword: '', newPassword: '', confirmPassword: '', avatar: null });
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
+  const [profileData, setProfileData] = useState({
+    username: user?.username || '',
+    email: user?.email || ''
+  });
+  const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const messagesEndRef = useRef(null);
-
-  useEffect(() => {
-    if (user) {
-      // Set admin ID for chat (using hardcoded admin user ID from Supabase)
-      if (!user.user_metadata?.isAdmin) {
-        setAdminId('f50b3415-730a-49e8-bb7f-05ac2fa97ed1'); // Admin user ID from Supabase
-      }
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (showChat && (adminId || selectedUser)) {
-      loadMessages();
-      const interval = setInterval(loadMessages, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [showChat, adminId, selectedUser]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const loadMessages = async () => {
-    const otherId = user?.user_metadata?.isAdmin ? selectedUser?.id : adminId;
-    if (otherId && user?.id) {
-      try {
-        const { data, error } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
-          .order('created_at', { ascending: true });
-        
-        if (!error && data) {
-          setMessages(data);
-        }
-      } catch (err) {
-        console.error('Error loading messages:', err);
-      }
-    }
-  };
-
-  const loadUsers = async () => {
-    if (user?.user_metadata?.isAdmin) {
-      try {
-        // Get all users who have sent messages (simplified approach)
-        const { data, error } = await supabase
-          .from('chat_messages')
-          .select('sender_id')
-          .neq('sender_id', user.id);
-        
-        if (!error && data) {
-          // For now, just show a placeholder user list
-          // In a full implementation, you'd fetch user details from auth.users
-          setUsers([
-            { id: 'customer-1', username: 'Customer', email: 'customer@test.com' }
-          ]);
-        }
-      } catch (err) {
-        console.error('Error loading users:', err);
-      }
-    }
-  };
-
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-    
-    const receiverId = user?.user_metadata?.isAdmin ? selectedUser?.id : adminId;
-    if (!receiverId || !user?.id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert([{
-          sender_id: user.id,
-          receiver_id: receiverId,
-          message: newMessage.trim(),
-          is_read: false
-        }])
-        .select();
-      
-      if (!error) {
-        setNewMessage('');
-        loadMessages();
-      } else {
-        console.error('Error sending message:', error);
-        alert('Failed to send message');
-      }
-    } catch (err) {
-      console.error('Error sending message:', err);
-      alert('Failed to send message');
-    }
-  };
-
-  const openUserList = () => {
-    setShowUserList(true);
-    loadUsers();
-  };
-
-  const selectUser = (u) => {
-    setSelectedUser(u);
-    setShowUserList(false);
-    setShowChat(true);
-  };
-
-  const openProfileModal = () => {
-    setProfileData({ 
-      email: user?.email || '', 
-      username: user?.user_metadata?.username || '', 
-      currentPassword: '', 
-      newPassword: '', 
-      confirmPassword: '', 
-      avatar: user?.user_metadata?.avatar || null 
-    });
-    setAvatarPreview(user?.user_metadata?.avatar || null);
-    setProfileMessage({ type: '', text: '' });
-    setShowProfileModal(true);
-  };
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result);
-        setProfileData({...profileData, avatar: reader.result});
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    setProfileLoading(true);
-    setProfileMessage({ type: '', text: '' });
-
+    setSavingProfile(true);
     try {
-      // Update username in Supabase user metadata
-      if (profileData.username && profileData.username !== user?.user_metadata?.username) {
-        const { error } = await supabase.auth.updateUser({
-          data: { username: profileData.username }
-        });
-        if (error) throw error;
-        updateUser({ ...user, user_metadata: { ...user.user_metadata, username: profileData.username } });
-      }
+      const token = localStorage.getItem('token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
 
-      // Update avatar if changed
-      if (profileData.avatar && profileData.avatar !== user?.user_metadata?.avatar) {
-        const { error } = await supabase.auth.updateUser({
-          data: { avatar: profileData.avatar }
+      // Update username if changed
+      if (profileData.username && profileData.username !== user?.username) {
+        await fetch('/api/auth/update-username', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ username: profileData.username })
         });
-        if (error) throw error;
-        updateUser({ ...user, user_metadata: { ...user.user_metadata, avatar: profileData.avatar } });
       }
 
       // Update email if changed
       if (profileData.email && profileData.email !== user?.email) {
-        const { error } = await supabase.auth.updateUser({
-          email: profileData.email
+        await fetch('/api/auth/update-email', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ email: profileData.email })
         });
-        if (error) throw error;
-        updateUser({ ...user, email: profileData.email });
       }
 
-      // Update password if provided
-      if (profileData.newPassword) {
-        if (profileData.newPassword !== profileData.confirmPassword) {
-          setProfileMessage({ type: 'error', text: 'New passwords do not match!' });
-          setProfileLoading(false);
-          return;
-        }
-        const { error } = await supabase.auth.updateUser({
-          password: profileData.newPassword
+      // Update avatar if a new file was selected (we send base64)
+      if (avatarPreview) {
+        await fetch('/api/auth/update-avatar', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ avatar: avatarPreview })
         });
-        if (error) throw error;
       }
 
-      setProfileMessage({ type: 'success', text: '✅ Profile updated successfully!' });
-      setProfileData({ ...profileData, currentPassword: '', newPassword: '', confirmPassword: '' });
+      // Refresh user from server
+      const meRes = await fetch('/api/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (meRes.ok) {
+        const fresh = await meRes.json();
+        updateUser({ ...fresh, isAdmin: Boolean(fresh.isAdmin) });
+      }
+
+      setShowProfileModal(false);
+      alert('Profile updated successfully!');
     } catch (err) {
-      setProfileMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update profile' });
+      console.error(err);
+      alert('Failed to update profile');
     } finally {
-      setProfileLoading(false);
+      setSavingProfile(false);
     }
   };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const fileInputRef = React.useRef();
 
   return (
     <div className="app-layout">
       {/* Fire Sparks / Embers */}
       <div className="fire-sparks">
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
-        <div className="spark"></div>
+        {[...Array(20)].map((_, i) => <div key={i} className="spark"></div>)}
       </div>
 
       <header className="top-navbar">
@@ -270,6 +125,15 @@ const Layout = () => {
             <span>YT Partners</span>
           </NavLink>
 
+          <NavLink to="/features" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <div className="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v20M2 12h20" />
+              </svg>
+            </div>
+            <span>Features</span>
+          </NavLink>
+
           <NavLink to="/about" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
             <div className="nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -281,16 +145,6 @@ const Layout = () => {
             <span>About</span>
           </NavLink>
 
-
-          <NavLink to="/features" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-            <div className="nav-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-              </svg>
-            </div>
-            <span>Features</span>
-          </NavLink>
-
           <NavLink to="/chat" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
             <div className="nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -300,7 +154,7 @@ const Layout = () => {
             <span>Chat</span>
           </NavLink>
 
-          {user?.user_metadata?.isAdmin && (
+          {user?.isAdmin && (
             <NavLink to="/admin" className={({isActive}) => `nav-item admin-item ${isActive ? 'active' : ''}`}>
               <div className="nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -316,11 +170,15 @@ const Layout = () => {
         <div className="navbar-user">
           {user ? (
             <>
-              <div className="user-info" onClick={openProfileModal} style={{cursor: 'pointer'}}>
-                <div className="user-avatar" style={user?.user_metadata?.avatar ? {background: `url(${user.user_metadata.avatar}) center/cover`} : {}}>
-                  {!user?.user_metadata?.avatar && user?.user_metadata?.username ? user.user_metadata.username.charAt(0).toUpperCase() : '🔥'}
+              <div className="user-info" onClick={() => { setAvatarPreview(user?.avatar || null); setShowProfileModal(true); }} style={{cursor: 'pointer'}}>
+                <div className="user-avatar">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.username} style={{width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover'}} />
+                  ) : (
+                    (user?.username ? user.username.charAt(0).toUpperCase() : '🔥')
+                  )}
                 </div>
-                <span className="user-name">{user?.user_metadata?.username || user?.email}</span>
+                <span className="user-name">{user?.username || user?.email}</span>
               </div>
               <button className="logout-btn" onClick={logout}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -347,7 +205,6 @@ const Layout = () => {
         <Outlet />
       </main>
 
-
       {/* Floating Buttons Container - Right Side */}
       <div className="floating-buttons-right">
         {/* Game Panel Button */}
@@ -359,7 +216,7 @@ const Layout = () => {
         </a>
 
         {/* Client Chat Button (for users) / Users Button (for admin) */}
-        {user?.user_metadata?.isAdmin ? (
+        {user?.isAdmin ? (
           <button className="float-btn users-btn" onClick={() => navigate('/chat')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -386,115 +243,6 @@ const Layout = () => {
         </svg>
       </a>
 
-      {/* User List Modal (Admin) */}
-      {showUserList && (
-        <div className="chat-modal-overlay" onClick={() => setShowUserList(false)}>
-          <div className="user-list-modal" onClick={e => e.stopPropagation()}>
-            <div className="chat-header">
-              <h3>👥 Users</h3>
-              <button className="close-btn" onClick={() => setShowUserList(false)}>✕</button>
-            </div>
-            <div className="user-list">
-              {users.length === 0 ? (
-                <p style={{textAlign: 'center', color: 'var(--text-muted)', padding: '40px'}}>No users yet</p>
-              ) : (
-                users.map(u => (
-                  <div key={u.id} className="user-list-item" onClick={() => selectUser(u)}>
-                    <div className="user-avatar-small" style={u.avatar ? {background: `url(${u.avatar}) center/cover`} : {}}>
-                      {!u.avatar ? u.username.charAt(0).toUpperCase() : ''}
-                    </div>
-                    <div className="user-list-info">
-                      <span className="user-list-name">{u.username}</span>
-                      <span className="user-list-email">{u.email}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Chat Modal */}
-      {showChat && (
-        <div className="chat-modal-overlay" onClick={() => { setShowChat(false); setSelectedUser(null); }}>
-          <div className="chat-modal" onClick={e => e.stopPropagation()}>
-            <div className="chat-header">
-              {user?.user_metadata?.isAdmin ? (
-                <>
-                  <div className="chat-header-info">
-                    <div className="chat-avatar" style={selectedUser?.avatar ? {background: `url(${selectedUser.avatar}) center/cover`} : {}}>{!selectedUser?.avatar && selectedUser?.username?.charAt(0).toUpperCase()}</div>
-                    <div>
-                      <h3>{selectedUser?.username}</h3>
-                      <span className="chat-status">User</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="chat-header-info">
-                    <div className="chat-avatar admin-avatar">🔥</div>
-                    <div>
-                      <h3>Flame Cloud Support</h3>
-                      <span className="chat-status online">● Online</span>
-                    </div>
-                  </div>
-                </>
-              )}
-              <button className="close-btn" onClick={() => { setShowChat(false); setSelectedUser(null); }}>✕</button>
-            </div>
-            <div className="chat-messages">
-              {messages.length === 0 ? (
-                <div style={{textAlign: 'center', padding: '40px'}}>
-                  <div style={{fontSize: '3rem', marginBottom: '16px'}}>💬</div>
-                  <p style={{color: '#949ba4'}}>No messages yet. Start the conversation!</p>
-                </div>
-              ) : (
-                messages.map((msg, index) => {
-                  const showAvatar = index === 0 || messages[index - 1]?.senderId !== msg.senderId;
-                  return (
-                    <div key={msg.id} className={`chat-message ${msg.senderId === user.id ? 'sent' : 'received'}`} style={{paddingTop: showAvatar ? '8px' : '2px'}}>
-                      {showAvatar && msg.senderId !== user.id && (
-                        <div className="message-avatar" style={msg.senderAvatar ? {background: `url(${msg.senderAvatar}) center/cover`} : {background: user?.user_metadata?.isAdmin ? '#5865f2' : 'linear-gradient(135deg, #FF2E00, #FF6A00)'}}>
-                          {!msg.senderAvatar && (user?.user_metadata?.isAdmin ? selectedUser?.username?.charAt(0).toUpperCase() : '🔥')}
-                        </div>
-                      )}
-                      {showAvatar && msg.senderId === user.id && (
-                        <div className="message-avatar" style={user?.avatar ? {background: `url(${user.avatar}) center/cover`} : {background: '#5865f2'}}>
-                          {!user?.avatar && user?.username?.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="message-bubble" style={{paddingLeft: showAvatar ? '0' : '0'}}>
-                        {showAvatar && (
-                          <span className="message-sender">
-                            {msg.senderId === user.id ? user?.user_metadata?.username : (user?.user_metadata?.isAdmin ? selectedUser?.username : 'Flame Cloud Support')}
-                            <span className="message-time">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                          </span>
-                        )}
-                        <div className="message-content">{msg.message}</div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            <form className="chat-input-form" onSubmit={sendMessage}>
-              <input 
-                type="text" 
-                value={newMessage} 
-                onChange={e => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                autoFocus
-              />
-              <button type="submit" className="send-btn">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Profile Settings Modal */}
       {showProfileModal && (
         <div className="modal-overlay" onClick={() => setShowProfileModal(false)}>
@@ -502,74 +250,35 @@ const Layout = () => {
             <h3>⚙️ Profile Settings</h3>
             
             <div style={{background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), rgba(255, 46, 0, 0.05))', padding: '20px', borderRadius: '16px', marginBottom: '24px', textAlign: 'center'}}>
-              {/* Avatar Upload */}
-              <div style={{position: 'relative', display: 'inline-block', marginBottom: '12px'}}>
-                <div 
-                  style={{
-                    width: '80px', 
-                    height: '80px', 
-                    borderRadius: '50%', 
-                    background: avatarPreview ? `url(${avatarPreview}) center/cover` : 'linear-gradient(135deg, var(--primary), var(--secondary))', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    fontSize: '2rem', 
-                    fontWeight: '700', 
-                    color: '#fff',
-                    cursor: 'pointer',
-                    border: '3px solid var(--primary)'
-                  }}
-                  onClick={() => document.getElementById('avatar-input').click()}
-                >
-                  {!avatarPreview && user?.user_metadata?.username?.charAt(0).toUpperCase()}
+              <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8}}>
+                <div style={{
+                  width: '80px', 
+                  height: '80px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '2rem', 
+                  fontWeight: '700', 
+                  color: '#fff',
+                  margin: '0 auto 12px',
+                  border: '3px solid var(--primary)'
+                }}>
+                  {avatarPreview || user?.avatar ? (
+                    <img src={avatarPreview || user.avatar} alt="avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                  ) : (
+                    <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background: 'linear-gradient(135deg, var(--primary), var(--secondary))'}}>{user?.username?.charAt(0).toUpperCase()}</div>
+                  )}
                 </div>
-                <div 
-                  style={{
-                    position: 'absolute',
-                    bottom: '0',
-                    right: '0',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #FF2E00, #FF6A00)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    border: '2px solid var(--dark-1)'
-                  }}
-                  onClick={() => document.getElementById('avatar-input').click()}
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
+                <div style={{display: 'flex', gap: '8px'}}>
+                  <button type="button" className="btn btn-secondary" onClick={() => fileInputRef.current?.click()} style={{padding: '8px 10px'}}>Upload Photo</button>
+                  <input ref={fileInputRef} type="file" accept="image/*" style={{display: 'none'}} onChange={handleAvatarChange} />
                 </div>
-                <input 
-                  type="file" 
-                  id="avatar-input" 
-                  accept="image/*" 
-                  onChange={handleAvatarChange} 
-                  style={{display: 'none'}} 
-                />
               </div>
-              <p style={{color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '8px'}}>Click to change avatar</p>
               <p style={{color: 'var(--text-primary)', fontWeight: '700', fontSize: '1.2rem'}}>{user?.username}</p>
               <p style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>{user?.email}</p>
             </div>
-
-            {profileMessage.text && (
-              <div style={{
-                padding: '12px 16px',
-                borderRadius: '10px',
-                marginBottom: '20px',
-                background: profileMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                border: `1px solid ${profileMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-                color: profileMessage.type === 'success' ? 'var(--success)' : '#ef4444'
-              }}>
-                {profileMessage.text}
-              </div>
-            )}
 
             <form onSubmit={handleProfileUpdate}>
               <div className="form-group">
@@ -592,45 +301,9 @@ const Layout = () => {
                 />
               </div>
 
-              <div style={{borderTop: '1px solid var(--glass-border)', margin: '24px 0', paddingTop: '24px'}}>
-                <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px'}}>🔒 Change Password</p>
-                
-                <div className="form-group">
-                  <label>Current Password</label>
-                  <input 
-                    type="password" 
-                    value={profileData.currentPassword} 
-                    onChange={e => setProfileData({...profileData, currentPassword: e.target.value})}
-                    placeholder="Enter current password"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>New Password</label>
-                  <input 
-                    type="password" 
-                    value={profileData.newPassword} 
-                    onChange={e => setProfileData({...profileData, newPassword: e.target.value})}
-                    placeholder="Enter new password"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Confirm New Password</label>
-                  <input 
-                    type="password" 
-                    value={profileData.confirmPassword} 
-                    onChange={e => setProfileData({...profileData, confirmPassword: e.target.value})}
-                    placeholder="Confirm new password"
-                  />
-                </div>
-              </div>
-
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowProfileModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={profileLoading}>
-                  {profileLoading ? '⏳ Saving...' : '💾 Save Changes'}
-                </button>
+                <button type="submit" className="btn btn-primary">💾 Save Changes</button>
               </div>
             </form>
           </div>

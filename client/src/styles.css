@@ -55,7 +55,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(ellipse 100% 80% at 50% 120%, rgba(255, 46, 0, 0.4) 0%, transparent 50%),
     radial-gradient(ellipse 80% 60% at 30% 100%, rgba(255, 106, 0, 0.35) 0%, transparent 45%),
     radial-gradient(ellipse 80% 60% at 70% 100%, rgba(255, 165, 0, 0.3) 0%, transparent 45%),
@@ -75,7 +75,7 @@ body::after {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(circle at 30% 90%, rgba(255, 46, 0, 0.1) 0%, transparent 30%),
     radial-gradient(circle at 70% 85%, rgba(255, 106, 0, 0.08) 0%, transparent 25%);
   pointer-events: none;
@@ -84,13 +84,19 @@ body::after {
 }
 
 @keyframes epicFireBg {
-  0%, 100% { 
+
+  0%,
+  100% {
     opacity: 1;
   }
 }
 
 @keyframes emberGlow {
-  0%, 100% { opacity: 0.8; }
+
+  0%,
+  100% {
+    opacity: 0.8;
+  }
 }
 
 /* Fire Sparks / Embers Animation */
@@ -108,26 +114,125 @@ body::after {
   animation: sparkFloat 8s ease-in-out infinite;
 }
 
-.spark:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 7s; }
-.spark:nth-child(2) { left: 20%; animation-delay: 1s; animation-duration: 9s; }
-.spark:nth-child(3) { left: 30%; animation-delay: 2s; animation-duration: 6s; }
-.spark:nth-child(4) { left: 40%; animation-delay: 0.5s; animation-duration: 8s; }
-.spark:nth-child(5) { left: 50%; animation-delay: 1.5s; animation-duration: 10s; }
-.spark:nth-child(6) { left: 60%; animation-delay: 2.5s; animation-duration: 7s; }
-.spark:nth-child(7) { left: 70%; animation-delay: 0.8s; animation-duration: 9s; }
-.spark:nth-child(8) { left: 80%; animation-delay: 1.8s; animation-duration: 6s; }
-.spark:nth-child(9) { left: 90%; animation-delay: 3s; animation-duration: 8s; }
-.spark:nth-child(10) { left: 15%; animation-delay: 0.3s; animation-duration: 11s; }
-.spark:nth-child(11) { left: 25%; animation-delay: 2.2s; animation-duration: 7s; }
-.spark:nth-child(12) { left: 35%; animation-delay: 1.2s; animation-duration: 9s; }
-.spark:nth-child(13) { left: 45%; animation-delay: 0.7s; animation-duration: 6s; }
-.spark:nth-child(14) { left: 55%; animation-delay: 2.8s; animation-duration: 8s; }
-.spark:nth-child(15) { left: 65%; animation-delay: 1.6s; animation-duration: 10s; }
-.spark:nth-child(16) { left: 75%; animation-delay: 0.4s; animation-duration: 7s; }
-.spark:nth-child(17) { left: 85%; animation-delay: 2.4s; animation-duration: 9s; }
-.spark:nth-child(18) { left: 95%; animation-delay: 1.1s; animation-duration: 6s; }
-.spark:nth-child(19) { left: 5%; animation-delay: 3.2s; animation-duration: 8s; }
-.spark:nth-child(20) { left: 48%; animation-delay: 0.9s; animation-duration: 11s; }
+.spark:nth-child(1) {
+  left: 10%;
+  animation-delay: 0s;
+  animation-duration: 7s;
+}
+
+.spark:nth-child(2) {
+  left: 20%;
+  animation-delay: 1s;
+  animation-duration: 9s;
+}
+
+.spark:nth-child(3) {
+  left: 30%;
+  animation-delay: 2s;
+  animation-duration: 6s;
+}
+
+.spark:nth-child(4) {
+  left: 40%;
+  animation-delay: 0.5s;
+  animation-duration: 8s;
+}
+
+.spark:nth-child(5) {
+  left: 50%;
+  animation-delay: 1.5s;
+  animation-duration: 10s;
+}
+
+.spark:nth-child(6) {
+  left: 60%;
+  animation-delay: 2.5s;
+  animation-duration: 7s;
+}
+
+.spark:nth-child(7) {
+  left: 70%;
+  animation-delay: 0.8s;
+  animation-duration: 9s;
+}
+
+.spark:nth-child(8) {
+  left: 80%;
+  animation-delay: 1.8s;
+  animation-duration: 6s;
+}
+
+.spark:nth-child(9) {
+  left: 90%;
+  animation-delay: 3s;
+  animation-duration: 8s;
+}
+
+.spark:nth-child(10) {
+  left: 15%;
+  animation-delay: 0.3s;
+  animation-duration: 11s;
+}
+
+.spark:nth-child(11) {
+  left: 25%;
+  animation-delay: 2.2s;
+  animation-duration: 7s;
+}
+
+.spark:nth-child(12) {
+  left: 35%;
+  animation-delay: 1.2s;
+  animation-duration: 9s;
+}
+
+.spark:nth-child(13) {
+  left: 45%;
+  animation-delay: 0.7s;
+  animation-duration: 6s;
+}
+
+.spark:nth-child(14) {
+  left: 55%;
+  animation-delay: 2.8s;
+  animation-duration: 8s;
+}
+
+.spark:nth-child(15) {
+  left: 65%;
+  animation-delay: 1.6s;
+  animation-duration: 10s;
+}
+
+.spark:nth-child(16) {
+  left: 75%;
+  animation-delay: 0.4s;
+  animation-duration: 7s;
+}
+
+.spark:nth-child(17) {
+  left: 85%;
+  animation-delay: 2.4s;
+  animation-duration: 9s;
+}
+
+.spark:nth-child(18) {
+  left: 95%;
+  animation-delay: 1.1s;
+  animation-duration: 6s;
+}
+
+.spark:nth-child(19) {
+  left: 5%;
+  animation-delay: 3.2s;
+  animation-duration: 8s;
+}
+
+.spark:nth-child(20) {
+  left: 48%;
+  animation-delay: 0.9s;
+  animation-duration: 11s;
+}
 
 .spark:nth-child(odd) {
   background: #FFD000;
@@ -147,18 +252,22 @@ body::after {
     opacity: 0;
     transform: translateX(0) scale(0.5);
   }
+
   10% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: translateX(20px) scale(0.8);
   }
+
   90% {
     opacity: 0.3;
     transform: translateX(-10px) scale(0.4);
   }
+
   100% {
     bottom: 100vh;
     opacity: 0;
@@ -167,8 +276,15 @@ body::after {
 }
 
 @keyframes bgPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .app-layout {
@@ -210,10 +326,13 @@ body::after {
 }
 
 @keyframes brandPulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     box-shadow: 0 8px 25px rgba(255, 46, 0, 0.3);
   }
-  50% { 
+
+  50% {
     box-shadow: 0 12px 35px rgba(255, 46, 0, 0.5), 0 0 20px rgba(255, 106, 0, 0.3);
   }
 }
@@ -225,9 +344,17 @@ body::after {
 }
 
 @keyframes logoFloat {
-  0% { transform: scale(1.1) rotate(5deg) translateY(0px); }
-  50% { transform: scale(1.15) rotate(8deg) translateY(-3px); }
-  100% { transform: scale(1.1) rotate(5deg) translateY(0px); }
+  0% {
+    transform: scale(1.1) rotate(5deg) translateY(0px);
+  }
+
+  50% {
+    transform: scale(1.15) rotate(8deg) translateY(-3px);
+  }
+
+  100% {
+    transform: scale(1.1) rotate(5deg) translateY(0px);
+  }
 }
 
 .navbar-brand:hover .brand-text h1 {
@@ -254,8 +381,15 @@ body::after {
 }
 
 @keyframes iconFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 .brand-text h1 {
@@ -323,7 +457,7 @@ body::after {
 .nav-item.active {
   background: linear-gradient(135deg, rgba(255, 106, 0, 0.25), rgba(255, 46, 0, 0.15));
   color: #FF6A00;
-  box-shadow: 0 4px 20px rgba(255, 106, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+  box-shadow: 0 4px 20px rgba(255, 106, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .nav-item.active .nav-icon {
@@ -354,7 +488,8 @@ body::after {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-.admin-item:hover, .admin-item.active {
+.admin-item:hover,
+.admin-item.active {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.15));
   border-color: rgba(245, 158, 11, 0.4);
   color: var(--accent);
@@ -528,8 +663,13 @@ body::after {
 }
 
 @keyframes fireLineMove {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .card:hover {
@@ -577,8 +717,13 @@ body::after {
 }
 
 @keyframes fireGradient {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 .plan-card::after {
@@ -593,13 +738,15 @@ body::after {
 }
 
 @keyframes cardRotate {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .plan-card:hover {
   transform: translateY(-6px);
   border: 2px solid #8b0000;
-  box-shadow: 
+  box-shadow:
     0 0 0 3px rgba(139, 0, 0, 0.6),
     0 15px 50px rgba(255, 70, 0, 0.25),
     0 0 40px rgba(255, 106, 0, 0.15);
@@ -673,7 +820,9 @@ body::after {
   letter-spacing: 0.5px;
 }
 
-.form-group input, .form-group textarea, .form-group select {
+.form-group input,
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 16px 20px;
   background: rgba(3, 0, 20, 0.6);
@@ -685,14 +834,17 @@ body::after {
   font-family: inherit;
 }
 
-.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), 0 0 30px rgba(139, 92, 246, 0.1);
   background: rgba(3, 0, 20, 0.8);
 }
 
-.form-group input::placeholder, .form-group textarea::placeholder {
+.form-group input::placeholder,
+.form-group textarea::placeholder {
   color: var(--text-muted);
 }
 
@@ -728,7 +880,7 @@ body::after {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transition: left 0.6s ease;
 }
 
@@ -822,7 +974,7 @@ body::after {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(ellipse 80% 50% at 30% 10%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
     radial-gradient(ellipse 60% 40% at 70% 90%, rgba(6, 182, 212, 0.15) 0%, transparent 50%);
   pointer-events: none;
@@ -837,7 +989,7 @@ body::after {
   width: 100%;
   max-width: 460px;
   position: relative;
-  box-shadow: 
+  box-shadow:
     0 30px 100px rgba(0, 0, 0, 0.6),
     0 0 80px rgba(139, 92, 246, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -910,7 +1062,8 @@ table {
   border-collapse: collapse;
 }
 
-th, td {
+th,
+td {
   padding: 18px 22px;
   text-align: left;
   border-bottom: 1px solid var(--glass-border);
@@ -1202,7 +1355,8 @@ tr:hover {
   font-size: 0.95rem;
 }
 
-.admin-tabs button.active, .admin-tabs button:hover {
+.admin-tabs button.active,
+.admin-tabs button:hover {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: white;
   box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
@@ -1270,9 +1424,11 @@ tr:hover {
   .navbar-menu {
     gap: 4px;
   }
+
   .nav-item {
     padding: 10px 14px;
   }
+
   .nav-item span {
     display: none;
   }
@@ -1284,101 +1440,101 @@ tr:hover {
     padding: 12px 24px;
     height: 70px;
   }
-  
+
   .navbar-menu {
     gap: 4px;
   }
-  
+
   .nav-item {
     padding: 10px 14px;
     font-size: 0.85rem;
   }
-  
+
   .main-content-top {
     padding: 100px 30px 40px;
   }
-  
+
   .plans-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
   }
-  
+
   .plan-card {
     padding: 28px;
   }
-  
+
   .plan-card h3 {
     font-size: 1.3rem;
   }
-  
+
   .price {
     font-size: 1.6rem;
   }
-  
+
   .hero-title {
     font-size: 2.5rem;
   }
-  
+
   .hero-description {
     font-size: 1rem;
   }
-  
+
   .quick-actions-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .features-mini-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .user-stats {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .location-flags-container {
     gap: 16px;
   }
-  
+
   .location-flag {
     padding: 16px 24px;
     min-width: 140px;
   }
-  
+
   .card {
     padding: 24px;
   }
-  
+
   .modal {
     max-width: 500px;
     padding: 32px;
   }
-  
+
   .btn {
     padding: 14px 28px;
     font-size: 0.95rem;
   }
-  
+
   .page-header h2 {
     font-size: 1.8rem;
   }
-  
+
   .staff-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .brand-logo {
     width: 40px;
     height: 40px;
   }
-  
+
   .brand-text h1 {
     font-size: 1.3rem;
   }
-  
+
   .brand-text span {
     font-size: 0.6rem;
   }
@@ -1391,27 +1547,35 @@ tr:hover {
     padding: 16px 20px;
     gap: 16px;
   }
+
   .navbar-menu {
     order: 3;
-    width: 100%;;
+    width: 100%;
+    ;
     justify-content: center;
     flex-wrap: wrap;
   }
+
   .nav-item {
     padding: 10px 16px;
   }
+
   .nav-item span {
     display: none;
   }
+
   .main-content-top {
     padding: 180px 20px 40px;
   }
+
   .plans-grid {
     grid-template-columns: 1fr;
   }
+
   .user-stats {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .user-name {
     display: none;
   }
@@ -1452,7 +1616,7 @@ tr:hover {
   justify-content: center;
   color: white;
   text-decoration: none;
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(88, 101, 242, 0.5),
     0 0 50px rgba(88, 101, 242, 0.3);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1461,13 +1625,16 @@ tr:hover {
 }
 
 @keyframes discordPulse {
-  0%, 100% { 
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 8px 30px rgba(88, 101, 242, 0.5),
       0 0 50px rgba(88, 101, 242, 0.3);
   }
-  50% { 
-    box-shadow: 
+
+  50% {
+    box-shadow:
       0 8px 40px rgba(88, 101, 242, 0.7),
       0 0 70px rgba(88, 101, 242, 0.4);
   }
@@ -1475,7 +1642,7 @@ tr:hover {
 
 .discord-float-btn:hover {
   transform: scale(1.15) rotate(10deg);
-  box-shadow: 
+  box-shadow:
     0 12px 50px rgba(88, 101, 242, 0.7),
     0 0 80px rgba(88, 101, 242, 0.5);
 }
@@ -1526,12 +1693,12 @@ tr:hover {
     width: 55px;
     height: 55px;
   }
-  
+
   .discord-float-btn svg {
     width: 26px;
     height: 26px;
   }
-  
+
   .discord-float-btn .discord-tooltip {
     display: none;
   }
@@ -1675,6 +1842,7 @@ tr:hover {
     box-shadow: 0 0 20px rgba(255, 106, 0, 0.3), 0 0 40px rgba(255, 46, 0, 0.15);
     border-color: #FF6A00;
   }
+
   100% {
     box-shadow: 0 0 25px rgba(255, 106, 0, 0.4), 0 0 50px rgba(255, 46, 0, 0.2);
     border-color: #FF8C00;
@@ -1769,11 +1937,11 @@ tr:hover {
     grid-template-columns: 1fr;
     gap: 40px;
   }
-  
+
   .hero-title {
     font-size: 3rem;
   }
-  
+
   .hero-stats {
     max-width: 500px;
   }
@@ -1786,46 +1954,47 @@ tr:hover {
     text-align: center;
     gap: 10px;
   }
-  
-  .title-flame, .title-cloud {
+
+  .title-flame,
+  .title-cloud {
     font-size: 2.2rem;
   }
-  
+
   .hero-section {
     text-align: center;
   }
-  
+
   .hero-content {
     text-align: center;
   }
-  
+
   .hero-description {
     font-size: 0.95rem;
     text-align: center;
   }
-  
+
   .hero-badges {
     justify-content: center;
   }
-  
+
   .hero-badge {
     padding: 10px 16px;
     font-size: 0.8rem;
   }
-  
+
   .hero-logo-bg {
     display: none;
   }
-  
+
   .hero-stats {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
-  
+
   .stat-box {
     padding: 20px;
   }
-  
+
   .stat-box .stat-value {
     font-size: 1.4rem;
   }
@@ -1848,7 +2017,7 @@ tr:hover {
   text-decoration: none;
   font-weight: 700;
   font-size: 1rem;
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.4),
     0 0 40px rgba(139, 92, 246, 0.2);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1870,7 +2039,7 @@ tr:hover {
 .game-panel-float-btn:hover {
   transform: translateX(-8px) scale(1.02);
   border-color: var(--primary);
-  box-shadow: 
+  box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.5),
     0 0 60px rgba(139, 92, 246, 0.3);
   background: linear-gradient(135deg, rgba(40, 28, 20, 0.98), rgba(60, 42, 30, 0.95));
@@ -1898,13 +2067,16 @@ tr:hover {
 
 /* Animation for Game Panel button */
 @keyframes panelGlow {
-  0%, 100% { 
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 8px 30px rgba(0, 0, 0, 0.4),
       0 0 40px rgba(139, 92, 246, 0.2);
   }
-  50% { 
-    box-shadow: 
+
+  50% {
+    box-shadow:
       0 8px 35px rgba(0, 0, 0, 0.5),
       0 0 50px rgba(139, 92, 246, 0.3);
   }
@@ -1923,7 +2095,7 @@ tr:hover {
     padding: 12px 18px;
     font-size: 0.9rem;
   }
-  
+
   .game-panel-float-btn svg {
     width: 22px;
     height: 22px;
@@ -2324,15 +2496,15 @@ tr:hover {
     bottom: 100px;
     right: 20px;
   }
-  
+
   .float-btn span {
     display: none;
   }
-  
+
   .float-btn {
     padding: 14px;
   }
-  
+
   .chat-modal {
     height: 80vh;
     max-width: 100%;
@@ -2375,7 +2547,7 @@ tr:hover {
 .feature-card:hover {
   transform: translateY(-10px);
   border-color: var(--primary);
-  box-shadow: 
+  box-shadow:
     0 25px 80px rgba(139, 92, 246, 0.2),
     0 0 60px rgba(139, 92, 246, 0.1);
 }
@@ -2430,13 +2602,26 @@ tr:hover {
 }
 
 @keyframes iconPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 @keyframes iconShine {
-  0% { transform: rotate(45deg) translateX(-150%); }
-  50%, 100% { transform: rotate(45deg) translateX(150%); }
+  0% {
+    transform: rotate(45deg) translateX(-150%);
+  }
+
+  50%,
+  100% {
+    transform: rotate(45deg) translateX(150%);
+  }
 }
 
 .feature-card:hover .feature-icon {
@@ -2697,26 +2882,33 @@ tr:hover {
 }
 
 @keyframes logoFloat {
-  0%, 100% { 
-    transform: translateY(0) rotate(0deg); 
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
   }
-  50% { 
-    transform: translateY(-15px) rotate(5deg); 
+
+  50% {
+    transform: translateY(-15px) rotate(5deg);
   }
 }
 
 @keyframes logoPulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     opacity: 0.12;
     filter: drop-shadow(0 0 60px rgba(255, 100, 0, 0.4));
   }
-  50% { 
+
+  50% {
     opacity: 0.2;
     filter: drop-shadow(0 0 80px rgba(255, 100, 0, 0.7));
   }
 }
 
-.title-flame, .title-cloud {
+.title-flame,
+.title-cloud {
   position: relative;
   z-index: 1;
 }
@@ -2766,6 +2958,7 @@ tr:hover {
   0% {
     filter: drop-shadow(0 0 15px #ff0040) drop-shadow(0 0 30px #ff0040);
   }
+
   100% {
     filter: drop-shadow(0 0 25px #ff0040) drop-shadow(0 0 50px #ff0040) drop-shadow(0 0 70px #8b0000);
   }
@@ -2797,13 +2990,27 @@ tr:hover {
 }
 
 @keyframes flagsLogoFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
 }
 
 @keyframes flagsLogoPulse {
-  0%, 100% { opacity: 0.06; }
-  50% { opacity: 0.12; }
+
+  0%,
+  100% {
+    opacity: 0.06;
+  }
+
+  50% {
+    opacity: 0.12;
+  }
 }
 
 .location-flags {
@@ -2919,8 +3126,15 @@ tr:hover {
 }
 
 @keyframes rocketBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
 }
 
 .coming-soon-content h2 {
@@ -3018,69 +3232,69 @@ tr:hover {
     backdrop-filter: blur(20px);
     gap: 8px;
   }
-  
+
   .navbar-brand {
     gap: 8px;
     display: flex !important;
   }
-  
+
   .brand-logo {
     width: 32px;
     height: 32px;
     display: block !important;
   }
-  
+
   .brand-text {
     display: block !important;
   }
-  
+
   .brand-text h1 {
     font-size: 0.95rem;
     display: block !important;
   }
-  
+
   .brand-text span {
     font-size: 0.55rem;
     display: block !important;
   }
-  
+
   .navbar-menu {
     background: linear-gradient(135deg, rgba(255, 106, 0, 0.08), rgba(255, 46, 0, 0.05));
     border-radius: 16px;
     padding: 6px;
     border: 1px solid rgba(255, 106, 0, 0.15);
   }
-  
+
   .nav-item {
     padding: 10px 12px;
     border-radius: 12px;
   }
-  
+
   .nav-item .nav-icon {
     width: 18px;
     height: 18px;
   }
-  
+
   .nav-item.active {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     box-shadow: 0 4px 15px rgba(255, 106, 0, 0.4);
   }
-  
+
   .navbar-user {
     gap: 6px;
   }
-  
+
   .user-avatar {
     width: 32px;
     height: 32px;
     font-size: 0.8rem;
   }
-  
+
   .logout-btn {
     width: 32px;
     height: 32px;
   }
-  
+
   .logout-btn svg {
     width: 16px;
     height: 16px;
@@ -3092,32 +3306,32 @@ tr:hover {
   .main-content-top {
     padding: 160px 16px 100px;
   }
-  
+
   .page-bg-logo {
     width: 250px;
     height: 250px;
     opacity: 0.03;
   }
-  
+
   .flags-bg-logo {
     display: none;
   }
-  
+
   .flags-logo-img {
     width: 200px;
     height: 200px;
   }
-  
+
   .page-header {
     margin-bottom: 24px;
     padding-bottom: 20px;
     text-align: center;
   }
-  
+
   .page-header h2 {
     font-size: 1.6rem;
   }
-  
+
   .page-header p {
     font-size: 0.9rem;
   }
@@ -3130,38 +3344,38 @@ tr:hover {
     border-radius: 20px;
     margin-bottom: 16px;
   }
-  
+
   .card h3 {
     font-size: 1.1rem;
   }
-  
+
   .plan-card {
     padding: 24px 20px;
     border-radius: 24px;
   }
-  
+
   .plan-card h3 {
     font-size: 1.3rem;
     margin-bottom: 20px;
   }
-  
+
   .plan-icon {
     width: 32px;
     height: 32px;
   }
-  
+
   .spec {
     padding: 12px 0;
   }
-  
+
   .spec-label {
     font-size: 0.85rem;
   }
-  
+
   .spec-value {
     font-size: 0.95rem;
   }
-  
+
   .price {
     font-size: 1.8rem;
     margin: 20px 0;
@@ -3175,11 +3389,11 @@ tr:hover {
     font-size: 0.95rem;
     border-radius: 14px;
   }
-  
+
   .btn-primary {
     box-shadow: 0 4px 20px rgba(255, 106, 0, 0.35);
   }
-  
+
   .btn-success {
     box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
   }
@@ -3190,23 +3404,23 @@ tr:hover {
   .user-stats {
     gap: 12px;
   }
-  
+
   .stat-card {
     padding: 20px 16px;
     border-radius: 20px;
   }
-  
+
   .stat-icon {
     width: 50px;
     height: 50px;
     font-size: 1.5rem;
     margin-bottom: 12px;
   }
-  
+
   .stat-value {
     font-size: 1.6rem;
   }
-  
+
   .stat-label {
     font-size: 0.8rem;
   }
@@ -3217,13 +3431,13 @@ tr:hover {
   .location-flags-container {
     padding: 20px 0;
   }
-  
+
   .location-flags {
     flex-direction: column;
     gap: 16px;
     padding: 0 10px;
   }
-  
+
   .location-flag {
     width: 100%;
     padding: 20px;
@@ -3232,17 +3446,17 @@ tr:hover {
     justify-content: flex-start;
     gap: 16px;
   }
-  
+
   .flag-img {
     width: 50px;
     height: 35px;
   }
-  
+
   .flag-name {
     font-size: 1.1rem;
     flex: 1;
   }
-  
+
   .flag-status {
     font-size: 0.75rem;
     padding: 6px 12px;
@@ -3256,23 +3470,23 @@ tr:hover {
     gap: 12px;
     margin: 30px 0 !important;
   }
-  
+
   .quick-action-card {
     padding: 20px 16px;
     border-radius: 20px;
   }
-  
+
   .quick-action-icon {
     width: 45px;
     height: 45px;
     font-size: 1.3rem;
     margin-bottom: 12px;
   }
-  
+
   .quick-action-card h4 {
     font-size: 0.9rem;
   }
-  
+
   .quick-action-card p {
     font-size: 0.75rem;
   }
@@ -3284,20 +3498,20 @@ tr:hover {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
+
   .feature-mini {
     padding: 16px;
     border-radius: 16px;
   }
-  
+
   .feature-mini-icon {
     font-size: 1.5rem;
   }
-  
+
   .feature-mini h5 {
     font-size: 0.95rem;
   }
-  
+
   .feature-mini p {
     font-size: 0.8rem;
   }
@@ -3309,7 +3523,7 @@ tr:hover {
     padding: 16px;
     align-items: flex-end;
   }
-  
+
   .modal {
     max-width: 100%;
     max-height: 85vh;
@@ -3317,17 +3531,17 @@ tr:hover {
     padding: 24px 20px;
     margin: 0;
   }
-  
+
   .modal h3 {
     font-size: 1.2rem;
     margin-bottom: 20px;
   }
-  
+
   .modal-actions {
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .modal-actions .btn {
     width: 100%;
   }
@@ -3340,12 +3554,13 @@ tr:hover {
     padding: 0 20px;
     overflow-x: auto;
   }
-  
+
   table {
     min-width: 500px;
   }
-  
-  th, td {
+
+  th,
+  td {
     padding: 14px 12px;
     font-size: 0.85rem;
   }
@@ -3358,25 +3573,25 @@ tr:hover {
     right: 16px;
     gap: 10px;
   }
-  
+
   .float-btn {
     padding: 12px 18px;
     border-radius: 50px;
     font-size: 0.85rem;
   }
-  
+
   .float-btn svg {
     width: 20px;
     height: 20px;
   }
-  
+
   .discord-float-btn {
     width: 55px;
     height: 55px;
     bottom: 20px;
     right: 16px;
   }
-  
+
   .discord-float-btn svg {
     width: 26px;
     height: 26px;
@@ -3390,31 +3605,31 @@ tr:hover {
     height: 80vh;
     border-radius: 24px 24px 0 0;
   }
-  
+
   .chat-header {
     padding: 16px;
   }
-  
+
   .chat-avatar {
     width: 40px;
     height: 40px;
   }
-  
+
   .chat-messages {
     padding: 16px;
   }
-  
+
   .message-bubble {
     max-width: 85%;
     padding: 12px 16px;
     border-radius: 18px;
   }
-  
+
   .chat-input-form input {
     padding: 14px 18px;
     font-size: 0.95rem;
   }
-  
+
   .send-btn {
     width: 48px;
     height: 48px;
@@ -3426,12 +3641,12 @@ tr:hover {
   .form-group {
     margin-bottom: 18px;
   }
-  
+
   .form-group label {
     font-size: 0.9rem;
     margin-bottom: 8px;
   }
-  
+
   .form-group input,
   .form-group textarea,
   .form-group select {
@@ -3464,7 +3679,7 @@ tr:hover {
     background-clip: text;
     box-shadow: 0 0 15px rgba(255, 106, 0, 0.3);
   }
-  
+
   .hero-badge {
     padding: 10px 16px;
     font-size: 0.8rem;
@@ -3485,12 +3700,12 @@ tr:hover {
     border-radius: 20px;
     margin-top: 24px;
   }
-  
+
   .extra-info h4 {
     font-size: 1.1rem;
     margin-bottom: 16px;
   }
-  
+
   .extra-info li {
     font-size: 0.9rem;
     padding: 8px 0;
@@ -3502,15 +3717,15 @@ tr:hover {
   .coming-soon-container {
     padding: 40px 20px;
   }
-  
+
   .coming-soon-icon {
     font-size: 4rem;
   }
-  
+
   .coming-soon-content h2 {
     font-size: 1.8rem;
   }
-  
+
   .coming-soon-content p {
     font-size: 0.95rem;
   }
@@ -3521,23 +3736,23 @@ tr:hover {
   .main-content-top {
     padding: 150px 12px 90px;
   }
-  
+
   .navbar-menu {
     padding: 6px;
   }
-  
+
   .nav-item {
     padding: 10px 12px;
   }
-  
+
   .quick-actions-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .user-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .page-header h2 {
     font-size: 1.4rem;
   }
@@ -3550,22 +3765,22 @@ tr:hover {
     align-items: center !important;
     gap: 20px !important;
   }
-  
+
   .staff-grid .staff-item {
     order: unset !important;
     transform: none !important;
     width: 90% !important;
     max-width: 300px !important;
   }
-  
+
   .staff-grid .staff-founder {
     order: -1 !important;
   }
-  
+
   .staff-grid .staff-owner {
     order: 0 !important;
   }
-  
+
   .staff-grid .staff-manager {
     order: 1 !important;
   }
@@ -3769,16 +3984,16 @@ tr:hover {
     gap: 20px;
     padding: 20px;
   }
-  
+
   .hero-content h1 {
     font-size: 2rem;
   }
-  
+
   .hero-stats {
     flex-direction: column;
     gap: 30px;
   }
-  
+
   .hero-btns {
     flex-direction: column;
   }
@@ -4069,36 +4284,36 @@ tr:hover {
     flex-direction: column;
     height: calc(100vh - 80px);
   }
-  
+
   .chat-sidebar {
     width: 100%;
     max-height: 200px;
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .chat-users-list {
     display: flex;
     overflow-x: auto;
     padding: 10px;
     gap: 10px;
   }
-  
+
   .chat-user-item {
     flex-direction: column;
     min-width: 80px;
     padding: 10px;
     text-align: center;
   }
-  
+
   .chat-user-info {
     width: 100%;
   }
-  
+
   .chat-user-email {
     display: none;
   }
-  
+
   .chat-msg-content {
     max-width: 85%;
   }
@@ -4109,9 +4324,12 @@ tr:hover {
 
 /* Flame Location Button Animation */
 @keyframes flamePulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.02);
   }
@@ -4138,6 +4356,7 @@ tr:hover {
     box-shadow: 0 0 20px rgba(255, 106, 0, 0.4), 0 0 40px rgba(255, 46, 0, 0.2);
     border-color: #FF6A00;
   }
+
   100% {
     box-shadow: 0 0 25px rgba(255, 106, 0, 0.5), 0 0 50px rgba(255, 46, 0, 0.25);
     border-color: #FF8C00;
@@ -4149,6 +4368,7 @@ tr:hover {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -4159,6 +4379,7 @@ tr:hover {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -4221,34 +4442,96 @@ button:active {
   animation: flameFloat 8s infinite linear;
 }
 
-.flame-particle-1 { left: 10%; animation-delay: 0s; }
-.flame-particle-2 { left: 20%; animation-delay: 1s; }
-.flame-particle-3 { left: 30%; animation-delay: 2s; }
-.flame-particle-4 { left: 40%; animation-delay: 3s; }
-.flame-particle-5 { left: 50%; animation-delay: 4s; }
-.flame-particle-6 { left: 60%; animation-delay: 5s; }
-.flame-particle-7 { left: 70%; animation-delay: 6s; }
-.flame-particle-8 { left: 80%; animation-delay: 7s; }
-.flame-particle-9 { left: 90%; animation-delay: 0.5s; }
-.flame-particle-10 { left: 15%; animation-delay: 1.5s; }
-.flame-particle-11 { left: 25%; animation-delay: 2.5s; }
-.flame-particle-12 { left: 35%; animation-delay: 3.5s; }
-.flame-particle-13 { left: 45%; animation-delay: 4.5s; }
-.flame-particle-14 { left: 55%; animation-delay: 5.5s; }
-.flame-particle-15 { left: 65%; animation-delay: 6.5s; }
+.flame-particle-1 {
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.flame-particle-2 {
+  left: 20%;
+  animation-delay: 1s;
+}
+
+.flame-particle-3 {
+  left: 30%;
+  animation-delay: 2s;
+}
+
+.flame-particle-4 {
+  left: 40%;
+  animation-delay: 3s;
+}
+
+.flame-particle-5 {
+  left: 50%;
+  animation-delay: 4s;
+}
+
+.flame-particle-6 {
+  left: 60%;
+  animation-delay: 5s;
+}
+
+.flame-particle-7 {
+  left: 70%;
+  animation-delay: 6s;
+}
+
+.flame-particle-8 {
+  left: 80%;
+  animation-delay: 7s;
+}
+
+.flame-particle-9 {
+  left: 90%;
+  animation-delay: 0.5s;
+}
+
+.flame-particle-10 {
+  left: 15%;
+  animation-delay: 1.5s;
+}
+
+.flame-particle-11 {
+  left: 25%;
+  animation-delay: 2.5s;
+}
+
+.flame-particle-12 {
+  left: 35%;
+  animation-delay: 3.5s;
+}
+
+.flame-particle-13 {
+  left: 45%;
+  animation-delay: 4.5s;
+}
+
+.flame-particle-14 {
+  left: 55%;
+  animation-delay: 5.5s;
+}
+
+.flame-particle-15 {
+  left: 65%;
+  animation-delay: 6.5s;
+}
 
 @keyframes flameFloat {
   0% {
     transform: translateY(100vh) scale(0);
     opacity: 0;
   }
+
   10% {
     opacity: 0.7;
     transform: scale(1);
   }
+
   90% {
     opacity: 0.7;
   }
+
   100% {
     transform: translateY(-100px) scale(0);
     opacity: 0;
@@ -4294,8 +4577,15 @@ button:active {
 }
 
 @keyframes flameGradient {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .flame-story-content {
@@ -4491,8 +4781,15 @@ button:active {
 }
 
 @keyframes flameCardGlow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Card Content */
@@ -4581,7 +4878,7 @@ button:active {
     gap: 60px;
     padding: 0 30px;
   }
-  
+
   .flame-main-title {
     font-size: 3rem;
   }
@@ -4592,12 +4889,12 @@ button:active {
     grid-template-columns: 1fr;
     gap: 80px;
   }
-  
+
   .flame-about-left,
   .flame-about-right {
     padding: 0;
   }
-  
+
   .flame-team-bottom {
     grid-template-columns: 1fr;
     gap: 30px;
@@ -4608,26 +4905,26 @@ button:active {
   .flame-about-section {
     padding: 40px 0;
   }
-  
+
   .flame-about-container {
     padding: 0 20px;
     gap: 60px;
   }
-  
+
   .flame-main-title {
     font-size: 2.5rem;
     flex-direction: column;
     text-align: center;
   }
-  
+
   .flame-features-section {
     padding: 30px 20px;
   }
-  
+
   .flame-team-card {
     padding: 25px 20px;
   }
-  
+
   .flame-avatar {
     width: 80px;
     height: 80px;
@@ -4639,16 +4936,60 @@ button:active {
   .flame-main-title {
     font-size: 2rem;
   }
-  
+
   .flame-description {
     font-size: 1.1rem;
   }
-  
+
   .flame-features-title {
     font-size: 1.6rem;
   }
-  
+
   .flame-team-title {
     font-size: 2rem;
+  }
+}
+
+/* YouTube Partner Card Styles */
+.partner-card {
+  transition: all 0.3s ease !important;
+}
+
+.partner-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(255, 106, 0, 0.4) !important;
+  box-shadow: 0 8px 25px rgba(255, 106, 0, 0.2) !important;
+}
+
+.partner-card:hover .partner-image-container {
+  transform: translateY(-8px) scale(1.15) !important;
+  box-shadow: 0 12px 30px rgba(255, 106, 0, 0.4), 0 0 20px rgba(255, 46, 0, 0.3) !important;
+  border: 2px solid rgba(255, 106, 0, 0.6);
+}
+
+.partner-image-container {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.partner-image-container img {
+  transition: all 0.3s ease !important;
+}
+
+.partner-card:hover .partner-image-container img {
+  transform: scale(1.05);
+}
+
+/* Star animation for featured partners */
+@keyframes starPulse {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+    transform: scale(1);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1)) drop-shadow(0 0 25px rgba(255, 165, 0, 0.6));
+    transform: scale(1.1);
   }
 }

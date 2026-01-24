@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext();
 
@@ -10,58 +9,101 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
-    };
-
-    getSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
+    // Check if user is logged in (from localStorage)
+    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
+    
+    if (storedUser && storedToken) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        // Ensure isAdmin is boolean
+        parsedUser.isAdmin = Boolean(parsedUser.isAdmin);
+        setUser(parsedUser);
+      } catch (e) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
       }
-    );
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
-    
-    if (error) throw error;
-    return data.user;
+    const contentType = res.headers.get('content-type') || '';
+
+    if (!res.ok) {
+      // Try to parse JSON error, otherwise fallback to text
+      if (contentType.includes('application/json')) {
+        const error = await res.json();
+        throw new Error(error.error || 'Login failed');
+      } else {
+        const text = await res.text();
+        throw new Error(text || 'Login failed (non-JSON response)');
+      }
+    }
+
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      // Unexpected non-JSON successful response
+      const text = await res.text();
+      throw new Error(text || 'Login succeeded but returned non-JSON');
+    }
+    // Ensure isAdmin is boolean
+    const userData = {
+      ...data.user,
+      isAdmin: Boolean(data.user.isAdmin)
+    };
+    // Store both user and token
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', data.token);
+    setUser(userData);
+    return userData;
   };
 
   const signup = async (username, email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username: username,
-        }
-      }
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password })
     });
-    
-    if (error) throw error;
-    return data;
+    const contentType = res.headers.get('content-type') || '';
+
+    if (!res.ok) {
+      if (contentType.includes('application/json')) {
+        const error = await res.json();
+        throw new Error(error.error || 'Signup failed');
+      } else {
+        const text = await res.text();
+        // Provide friendlier message when proxy/network issues occur
+        if (text && text.toLowerCase().includes('proxy')) throw new Error('Server proxy error — backend may be down');
+        throw new Error(text || 'Signup failed (non-JSON response)');
+      }
+    }
+
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+
+    const text = await res.text();
+    throw new Error(text || 'Signup succeeded but returned non-JSON');
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setUser(null);
   };
 
   const updateUser = (updates) => {
-    setUser(prev => ({ ...prev, ...updates }));
+    const updated = { ...user, ...updates };
+    setUser(updated);
+    localStorage.setItem('user', JSON.stringify(updated));
   };
 
   return (

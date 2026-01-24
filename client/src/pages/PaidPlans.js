@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,37 +32,29 @@ const PaidPlans = () => {
   };
 
   useEffect(() => {
-    // Fetch paid plans from Supabase
+    // Fetch paid plans and location settings from server (SQLite-backed)
     const fetchPlans = async () => {
-      const { data, error } = await supabase
-        .from('paid_plans')
-        .select('*')
-        .order('sort_order');
-      
-      if (!error && data) {
-        setPlans(data);
+      try {
+        const res = await fetch('/api/plans/paid');
+        if (res.ok) {
+          const data = await res.json();
+          setPlans(data);
+        }
+      } catch (err) {
+        console.error('Failed to load plans from server', err);
       }
     };
 
-    // Fetch location settings
     const fetchLocationSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('location_settings')
-          .select('*');
-        
-        if (!error && data) {
-          setLocationSettings(data);
-        } else {
-          // Fallback to default locations
-          setLocationSettings([
-            { location: 'UAE', is_available: true },
-            { location: 'France', is_available: false },
-            { location: 'Singapore', is_available: false }
-          ]);
+        const res = await fetch('/api/plans/locations');
+        if (res.ok) {
+          const data = await res.json();
+          // normalize fields (server uses isAvailable)
+          setLocationSettings(data.map(l => ({ location: l.location, is_available: !!l.isAvailable })));
         }
       } catch (err) {
-        console.log('Using default location settings');
+        console.error('Failed to load locations, using defaults', err);
         setLocationSettings([
           { location: 'UAE', is_available: true },
           { location: 'France', is_available: false },
@@ -72,15 +63,15 @@ const PaidPlans = () => {
       }
     };
 
-    // Fetch settings
     const fetchSettings = async () => {
-      const { data } = await supabase
-        .from('site_settings')
-        .select('*')
-        .eq('key', 'discord_members');
-      
-      if (data && data[0]) {
-        setDiscordMembers(data[0].value);
+      try {
+        const res = await fetch('/api/plans/settings/discord_members');
+        if (res.ok) {
+          const data = await res.json();
+          setDiscordMembers(data.value || discordMembers);
+        }
+      } catch (err) {
+        // ignore
       }
     };
 
@@ -137,23 +128,23 @@ const PaidPlans = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64Image = reader.result;
-        
-        // Create ticket using Supabase
-        const { data, error } = await supabase
-          .from('tickets')
-          .insert([{
-            user_id: user.id,
+        // Submit order to server so admin panel (SQLite) can see it
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/plans/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
+          body: JSON.stringify({
             subject: `Plan Order: ${selectedPlan.name}`,
             message: `Plan: ${selectedPlan.name}\nRAM: ${selectedPlan.ram}\nCPU: ${selectedPlan.cpu}\nPrice: ${selectedPlan.price}\n\nPayment Screenshot Attached`,
-            screenshot: base64Image,
-            status: 'pending'
-          }])
-          .select();
-        
-        if (error) {
-          throw error;
+            screenshot: base64Image
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Failed to submit order');
         }
-        
+
         setSuccess('✅ Order submitted successfully! We will verify and activate your server within 24 hours.');
         setScreenshot(null);
         setScreenshotPreview(null);
@@ -290,7 +281,7 @@ const PaidPlans = () => {
                   {/* France */}
                   <div 
                     onClick={() => { setSelectedLocation('France'); setShowFlags(false); }}
-                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease'}}
+                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease', order: 0}}
                     className="flag-item"
                   >
                     {!isLocationAvailable('France') && (
@@ -331,14 +322,14 @@ const PaidPlans = () => {
                         zIndex: 10
                       }}>Soon</span>
                     )}
-                    <img src="/uae-flag.webp" alt="UAE" style={{width: '160px', height: '110px', borderRadius: '12px', transition: 'transform 0.3s ease', background: 'transparent', objectFit: 'cover'}} />
+                    <img src="/uae-flag.webp" alt="UAE" style={{width: '180px', height: '125px', borderRadius: '12px', transition: 'transform 0.3s ease', background: 'transparent', objectFit: 'cover', boxShadow: '0 10px 30px rgba(0,0,0,0.4)'}} />
                     <p style={{color: '#fff', marginTop: '14px', fontWeight: '700', fontSize: '1.25rem'}}>UAE</p>
                   </div>
 
                   {/* Singapore */}
                   <div 
                     onClick={() => { setSelectedLocation('Singapore'); setShowFlags(false); }}
-                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease'}}
+                    style={{cursor: 'pointer', textAlign: 'center', position: 'relative', transition: 'transform 0.3s ease', order: 2}}
                     className="flag-item"
                   >
                     {!isLocationAvailable('Singapore') && (
