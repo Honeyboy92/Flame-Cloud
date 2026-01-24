@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../context/AuthContext';
 
 const About = () => {
   const [about, setAbout] = useState(null);
@@ -11,9 +12,13 @@ const About = () => {
 
   const fetchAbout = async () => {
     try {
-      const res = await fetch('/api/about');
-      if (res.ok) {
-        const data = await res.json();
+      const { data, error } = await supabase
+        .from('about_content')
+        .select('*')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 is 'not found'
+      if (data) {
         setAbout(data);
       }
     } catch (err) {
@@ -25,7 +30,7 @@ const About = () => {
 
   if (loading) {
     return (
-      <div style={{textAlign: 'center', padding: '60px 20px'}}>
+      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
         <p>Loading...</p>
       </div>
     );
@@ -76,12 +81,12 @@ const About = () => {
               overflow: 'visible',
               transition: 'all 0.25s ease',
               transform: hoveredCard === 'founder' ? 'translateY(-8px) scale(1.02)' : 'scale(1)',
-              boxShadow: hoveredCard === 'founder' 
-                ? '0 18px 48px rgba(255, 46, 0, 0.24), 0 0 30px rgba(255, 106, 0, 0.14)' 
+              boxShadow: hoveredCard === 'founder'
+                ? '0 18px 48px rgba(255, 46, 0, 0.24), 0 0 30px rgba(255, 106, 0, 0.14)'
                 : '0 8px 26px rgba(255, 46, 0, 0.12)'
             }}>
             {/* Flame Founder badge (outside box, glowing gradient text) */}
-            <div style={{position: 'absolute', top: '-44px', left: '50%', transform: 'translateX(-50%)', zIndex: 3}}>
+            <div style={{ position: 'absolute', top: '-44px', left: '50%', transform: 'translateX(-50%)', zIndex: 3 }}>
               <div style={{
                 display: 'inline-block',
                 padding: '6px 14px',
@@ -117,7 +122,7 @@ const About = () => {
               transition: 'opacity 0.3s ease'
             }}></div>
 
-            <div style={{position: 'relative', zIndex: 1}}>
+            <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{
                 width: '96px',
                 height: '96px',
@@ -131,7 +136,7 @@ const About = () => {
                 border: '3px solid rgba(255, 106, 0, 0.22)',
                 background: 'linear-gradient(180deg, rgba(30,18,10,0.7), rgba(20,12,8,0.6))'
               }}>
-                <img src="/rameez-xd.png" alt="Rammez_xD" onError={(e)=>{e.currentTarget.onerror=null; e.currentTarget.src='/logo.png'}} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+                <img src="/rameez-xd.png" alt="Rammez_xD" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/logo.png' }} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
               </div>
               <div style={{
                 background: 'linear-gradient(135deg, #FF2E00, #FF6A00)',
@@ -177,7 +182,7 @@ const About = () => {
             marginRight: 'auto'
           }}>
             {/* Owner Card - Left */}
-              <div
+            <div
               onMouseEnter={() => setHoveredCard('owner')}
               onMouseLeave={() => setHoveredCard(null)}
               style={{
@@ -190,49 +195,49 @@ const About = () => {
                 overflow: 'visible',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: hoveredCard === 'owner' ? 'translateY(-8px) scale(1.02)' : 'translateY(0)',
-                boxShadow: hoveredCard === 'owner' 
-                  ? '0 20px 48px rgba(255, 106, 0, 0.12), inset 0 2px 10px rgba(255,46,0,0.02)' 
+                boxShadow: hoveredCard === 'owner'
+                  ? '0 20px 48px rgba(255, 106, 0, 0.12), inset 0 2px 10px rgba(255,46,0,0.02)'
                   : '0 6px 22px rgba(0,0,0,0.42)'
               }}>
-              <div style={{position: 'relative', zIndex: 1}}>
-                  {/* Flame Owner badge (outside box, glowing gradient text) */}
-                  <div style={{position: 'absolute', top: '-52px', left: '50%', transform: 'translateX(-50%)', zIndex: 6}}>
-                    <div style={{
-                      display: 'inline-block',
-                      padding: '8px 16px',
-                      background: 'rgba(22,14,10,0.6)',
-                      border: '1px solid rgba(255,120,40,0.16)',
-                      borderRadius: '24px',
-                      boxShadow: '0 14px 40px rgba(255,80,10,0.14)'
-                    }}>
-                      <span style={{
-                        background: 'linear-gradient(90deg,#FF2E00,#FF6A00,#FFD000)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                        fontWeight: 900,
-                        fontSize: '1rem',
-                        whiteSpace: 'nowrap',
-                        display: 'inline-block'
-                      }}>Flame Owner</span>
-                    </div>
-                  </div>
-
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                {/* Flame Owner badge (outside box, glowing gradient text) */}
+                <div style={{ position: 'absolute', top: '-52px', left: '50%', transform: 'translateX(-50%)', zIndex: 6 }}>
                   <div style={{
-                    width: '84px',
-                    height: '84px',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 16px',
-                    boxShadow: '0 10px 30px rgba(255, 106, 0, 0.30)',
-                    border: '2px solid rgba(255, 208, 0, 0.2)',
-                    background: 'linear-gradient(180deg, rgba(30,18,10,0.7), rgba(20,12,8,0.6))'
+                    display: 'inline-block',
+                    padding: '8px 16px',
+                    background: 'rgba(22,14,10,0.6)',
+                    border: '1px solid rgba(255,120,40,0.16)',
+                    borderRadius: '24px',
+                    boxShadow: '0 14px 40px rgba(255,80,10,0.14)'
                   }}>
-                    <img src="/tgkflex.jpg" alt="TGKFLEX" onError={(e)=>{e.currentTarget.onerror=null; e.currentTarget.src='/logo.png'}} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+                    <span style={{
+                      background: 'linear-gradient(90deg,#FF2E00,#FF6A00,#FFD000)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      fontWeight: 900,
+                      fontSize: '1rem',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-block'
+                    }}>Flame Owner</span>
                   </div>
+                </div>
+
+                <div style={{
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  boxShadow: '0 10px 30px rgba(255, 106, 0, 0.30)',
+                  border: '2px solid rgba(255, 208, 0, 0.2)',
+                  background: 'linear-gradient(180deg, rgba(30,18,10,0.7), rgba(20,12,8,0.6))'
+                }}>
+                  <img src="/tgkflex.jpg" alt="TGKFLEX" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/logo.png' }} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                </div>
                 <div style={{
                   background: 'linear-gradient(135deg, #FF6A00, #FFD000)',
                   WebkitBackgroundClip: 'text',
@@ -255,10 +260,10 @@ const About = () => {
                   {about?.owner_name || 'TGKFLEX'}
                 </h4>
                 <p style={{
-                color: 'var(--text-muted)',
-                fontSize: '0.85rem',
-                lineHeight: '1.5',
-                margin: 0
+                  color: 'var(--text-muted)',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.5',
+                  margin: 0
                 }}>
                   Manages core infrastructure and uptime.
                 </p>
@@ -266,7 +271,7 @@ const About = () => {
             </div>
 
             {/* Management Card - Right */}
-              <div
+            <div
               onMouseEnter={() => setHoveredCard('management')}
               onMouseLeave={() => setHoveredCard(null)}
               style={{
@@ -279,49 +284,49 @@ const About = () => {
                 overflow: 'visible',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: hoveredCard === 'management' ? 'translateY(-8px) scale(1.02)' : 'translateY(0)',
-                boxShadow: hoveredCard === 'management' 
-                  ? '0 20px 48px rgba(255, 106, 0, 0.12), inset 0 2px 10px rgba(255,46,0,0.02)' 
+                boxShadow: hoveredCard === 'management'
+                  ? '0 20px 48px rgba(255, 106, 0, 0.12), inset 0 2px 10px rgba(255,46,0,0.02)'
                   : '0 6px 22px rgba(0,0,0,0.42)'
               }}>
-              <div style={{position: 'relative', zIndex: 1}}>
-                  {/* Flame Management badge (outside box, glowing gradient text) */}
-                  <div style={{position: 'absolute', top: '-52px', left: '50%', transform: 'translateX(-50%)', zIndex: 6}}>
-                    <div style={{
-                      display: 'inline-block',
-                      padding: '8px 16px',
-                      background: 'rgba(22,14,10,0.6)',
-                      border: '1px solid rgba(255,120,40,0.16)',
-                      borderRadius: '24px',
-                      boxShadow: '0 14px 40px rgba(255,80,10,0.14)'
-                    }}>
-                      <span style={{
-                        background: 'linear-gradient(90deg,#FF2E00,#FF6A00,#FFD000)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                        fontWeight: 900,
-                        fontSize: '1rem',
-                        whiteSpace: 'nowrap',
-                        display: 'inline-block'
-                      }}>Flame Management</span>
-                    </div>
-                  </div>
-
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                {/* Flame Management badge (outside box, glowing gradient text) */}
+                <div style={{ position: 'absolute', top: '-52px', left: '50%', transform: 'translateX(-50%)', zIndex: 6 }}>
                   <div style={{
-                    width: '84px',
-                    height: '84px',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 16px',
-                    boxShadow: '0 10px 30px rgba(255, 106, 0, 0.30)',
-                    border: '2px solid rgba(255, 106, 0, 0.2)',
-                    background: 'linear-gradient(180deg, rgba(30,18,10,0.7), rgba(20,12,8,0.6))'
+                    display: 'inline-block',
+                    padding: '8px 16px',
+                    background: 'rgba(22,14,10,0.6)',
+                    border: '1px solid rgba(255,120,40,0.16)',
+                    borderRadius: '24px',
+                    boxShadow: '0 14px 40px rgba(255,80,10,0.14)'
                   }}>
-                    <img src="/pie-legend.jpg" alt="!Pie LEGEND" onError={(e)=>{e.currentTarget.onerror=null; e.currentTarget.src='/logo.png'}} style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+                    <span style={{
+                      background: 'linear-gradient(90deg,#FF2E00,#FF6A00,#FFD000)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      fontWeight: 900,
+                      fontSize: '1rem',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-block'
+                    }}>Flame Management</span>
                   </div>
+                </div>
+
+                <div style={{
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  boxShadow: '0 10px 30px rgba(255, 106, 0, 0.30)',
+                  border: '2px solid rgba(255, 106, 0, 0.2)',
+                  background: 'linear-gradient(180deg, rgba(30,18,10,0.7), rgba(20,12,8,0.6))'
+                }}>
+                  <img src="/pie-legend.jpg" alt="!Pie LEGEND" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/logo.png' }} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                </div>
                 <div style={{
                   background: 'linear-gradient(135deg, #FF2E00, #FF6A00)',
                   WebkitBackgroundClip: 'text',
@@ -378,7 +383,7 @@ const About = () => {
               pointerEvents: 'none'
             }}></div>
 
-            <div style={{position: 'relative', zIndex: 1}}>
+            <div style={{ position: 'relative', zIndex: 1 }}>
               <h2 style={{
                 fontSize: '2.2rem',
                 fontWeight: '800',
@@ -391,12 +396,12 @@ const About = () => {
                 alignItems: 'center',
                 gap: '12px'
               }}>
-                <img src="/logo.png" alt="Flame Cloud" style={{width: '42px', height: '42px', objectFit: 'contain'}} />
+                <img src="/logo.png" alt="Flame Cloud" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
                 About Flame Cloud
               </h2>
 
               {/* Key Features */}
-              <div style={{marginTop: '32px'}}>
+              <div style={{ marginTop: '32px' }}>
                 <h3 style={{
                   fontSize: '1.3rem',
                   fontWeight: '700',
@@ -409,7 +414,7 @@ const About = () => {
                   ⚡ Why Choose Flame Cloud?
                 </h3>
 
-                <div style={{display: 'grid', gap: '14px'}}>
+                <div style={{ display: 'grid', gap: '14px' }}>
                   {[
                     { icon: '🚀', text: 'Ultra-Fast NVMe SSD Servers' },
                     { icon: '🌍', text: 'Global Server Locations' },
@@ -432,18 +437,18 @@ const About = () => {
                       transition: 'all 0.3s ease',
                       cursor: 'pointer'
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.transform = 'translateX(8px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.transform = 'translateX(0)';
-                    }}>
-                      <span style={{fontSize: '1.3rem'}}>{feature.icon}</span>
-                      <span style={{color: 'var(--text-secondary)', fontWeight: '500'}}>
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.transform = 'translateX(8px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }}>
+                      <span style={{ fontSize: '1.3rem' }}>{feature.icon}</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>
                         {feature.text}
                       </span>
                     </div>
