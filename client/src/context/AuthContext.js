@@ -1,4 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://pvagrcxhfxzwmnhbanwe.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2YWdyY2h4Znh6d21uaGJhbndlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyODQzMjYsImV4cCI6MjA4NDg2MDMyNn0.1ayCVYvQqwsUWyc76kUVMA3lg0x91hRzFscyU4p0ra4';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const AuthContext = createContext();
 
@@ -9,106 +16,121 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in (from localStorage)
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    
-    if (storedUser && storedToken) {
+    // Check current session
+    const checkSession = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        // Ensure isAdmin is boolean
-        parsedUser.isAdmin = Boolean(parsedUser.isAdmin);
-        setUser(parsedUser);
-      } catch (e) {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // Get user profile from users table
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+            username: profile?.username || session.user.email.split('@')[0],
+            isAdmin: profile?.is_admin || false,
+            avatar: profile?.avatar || null
+          });
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Get user profile
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: profile?.username || session.user.email.split('@')[0],
+          isAdmin: profile?.is_admin || false,
+          avatar: profile?.avatar || null
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
-    const contentType = res.headers.get('content-type') || '';
 
-    if (!res.ok) {
-      // Try to parse JSON error, otherwise fallback to text
-      if (contentType.includes('application/json')) {
-        const error = await res.json();
-        throw new Error(error.error || 'Login failed');
-      } else {
-        const text = await res.text();
-        throw new Error(text || 'Login failed (non-JSON response)');
-      }
+    if (error) {
+      throw new Error(error.message);
     }
 
-    let data;
-    if (contentType.includes('application/json')) {
-      data = await res.json();
-    } else {
-      // Unexpected non-JSON successful response
-      const text = await res.text();
-      throw new Error(text || 'Login succeeded but returned non-JSON');
-    }
-    // Ensure isAdmin is boolean
+    // Get user profile from users table
+    const { data: profile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
     const userData = {
-      ...data.user,
-      isAdmin: Boolean(data.user.isAdmin)
+      id: data.user.id,
+      email: data.user.email,
+      username: profile?.username || data.user.email.split('@')[0],
+      isAdmin: profile?.is_admin || false,
+      avatar: profile?.avatar || null
     };
-    // Store both user and token
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', data.token);
+
     setUser(userData);
     return userData;
   };
 
   const signup = async (username, email, password) => {
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password })
-    });
-    const contentType = res.headers.get('content-type') || '';
-
-    if (!res.ok) {
-      if (contentType.includes('application/json')) {
-        const error = await res.json();
-        throw new Error(error.error || 'Signup failed');
-      } else {
-        const text = await res.text();
-        // Provide friendlier message when proxy/network issues occur
-        if (text && text.toLowerCase().includes('proxy')) throw new Error('Server proxy error — backend may be down');
-        throw new Error(text || 'Signup failed (non-JSON response)');
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username: username
+        }
       }
+    });
+
+    if (error) {
+      throw new Error(error.message);
     }
 
-    if (contentType.includes('application/json')) {
-      return await res.json();
-    }
-
-    const text = await res.text();
-    throw new Error(text || 'Signup succeeded but returned non-JSON');
+    return data;
   };
 
   const logout = async () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    await supabase.auth.signOut();
     setUser(null);
   };
 
   const updateUser = (updates) => {
-    const updated = { ...user, ...updates };
-    setUser(updated);
-    localStorage.setItem('user', JSON.stringify(updated));
+    setUser(prev => ({ ...prev, ...updates }));
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, loading, updateUser }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, loading, updateUser, supabase }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+export { supabase };
