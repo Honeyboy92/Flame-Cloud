@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../context/AuthContext';
 
 const YTPartners = () => {
   const [partners, setPartners] = useState([]);
@@ -10,20 +11,23 @@ const YTPartners = () => {
 
   const fetchPartners = async () => {
     try {
-      const res = await fetch('/api/plans/yt-partners');
-      if (res.ok) {
-        const data = await res.json();
-        // normalize partner fields (server returns { id, name, link, logo, isFeatured })
-        const normalized = (data || []).map(p => ({
-          id: p.id,
-          name: p.name,
-          logo: p.logo,
-          channel_url: p.link || p.channel_url || '#',
-          description: p.description || '',
-          isFeatured: p.isFeatured || false
-        }));
-        setPartners(normalized);
-      }
+      const { data, error } = await supabase
+        .from('yt_partners')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      const normalized = (data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        logo: p.logo,
+        channel_url: p.channel_link || '#',
+        description: p.description || '',
+        isFeatured: p.is_featured || false
+      }));
+      setPartners(normalized);
     } catch (err) {
       console.error('Error fetching partners:', err);
     } finally {
