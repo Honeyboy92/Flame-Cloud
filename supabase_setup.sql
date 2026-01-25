@@ -19,6 +19,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 -- Policies for users
 CREATE POLICY "Users can view their own profile" ON public.users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" ON public.users FOR INSERT WITH CHECK (TRUE); 
 CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles" ON public.users FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = TRUE)
@@ -113,4 +114,4 @@ INSERT INTO public.paid_plans (name, ram, cpu, storage, location, price, sort_or
 ('Silver Plan', '4GB', '150%', '20 GB SSD', 'UAE', '400 PKR', 2),
 ('Gold Plan', '8GB', '250%', '30 GB SSD', 'UAE', '600 PKR', 3),
 ('Platinum Plan', '10GB', '300%', '40 GB SSD', 'UAE', '800 PKR', 4),
-('Black Ruby Plan', '34GB', '2000%', '200 GB SSD', 'UAE', '3400 PKR', 9);
+('Black Ruby Plan', '64GB', '2000%', '200 GB SSD', 'UAE', '6400 PKR', 9);
