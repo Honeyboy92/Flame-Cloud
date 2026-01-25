@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, supabase } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Chat = () => {
@@ -14,7 +14,7 @@ const Chat = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editData, setEditData] = useState({ username: '' });
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
-  const [editAvatarFile, setEditAvatarFile] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -22,44 +22,43 @@ const Chat = () => {
       navigate('/login');
       return;
     }
-    
+
     if (user.isAdmin) {
       loadUsers();
     }
   }, [user, navigate]);
 
-  // Poll messages periodically to simulate live chat
+  // Poll messages periodically
   useEffect(() => {
     const iv = setInterval(() => {
       loadMessages();
       if (user?.isAdmin) loadUsers();
-    }, 3000);
+    }, 3000); // 3 seconds poll
     return () => clearInterval(iv);
   }, [user, selectedUser]);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
-  };
-
   useEffect(() => {
     if (messages.length > 0) {
+      // Auto-scroll to bottom only if near bottom or initial load? For now always scroll.
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  // Load messages initially when user or selectedUser changes
+  // Initial load
   useEffect(() => {
     loadMessages();
   }, [user, selectedUser]);
 
   const loadUsers = async () => {
     try {
-      const res = await fetch('/api/chat/users', { headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      }
+      // Load all users for admin panel chat list
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('last_seen', { ascending: false, nullsFirst: false }); // Optional: order by activity if column exists or just created_at
+
+      if (error) throw error;
+      setUsers(data || []);
     } catch (err) {
       console.error('Error loading users:', err);
     }
@@ -69,47 +68,63 @@ const Chat = () => {
     if (!user?.id) return;
 
     try {
-      let url = '';
-      // Admin must select a user to see that conversation
+      let query = supabase
+        .from('chat_messages')
+        .select('*, sender:users!sender_id(username, avatar), receiver:users!receiver_id(username, avatar)')
+        .order('created_at', { ascending: true });
+
       if (user.isAdmin) {
         if (!selectedUser?.id) {
           setMessages([]);
           return;
         }
-        url = `/api/chat/messages/${selectedUser.id}`;
+        // Filter messages between Admin and Selected User
+        // Because admin ID might not be fixed, assume current user is admin
+        query = query.or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${user.id})`);
       } else {
-        // Regular user: get the admin id then fetch messages between user and admin
-        const adminRes = await fetch('/api/chat/admin', { headers: getAuthHeaders() });
-        if (!adminRes.ok) return;
-        const admin = await adminRes.json();
-        if (!admin?.id) return;
-        url = `/api/chat/messages/${admin.id}`;
+        // Regular user: fetch their own messages (sent or received)
+        // Usually chat is with Support (Admin).
+        // Since we don't have a single "Support" ID, we fetch all messages involving this user.
+        // And we assume the other party is Support.
+        query = query.or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
       }
 
-      const res = await fetch(url, { headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        // Map messages to client format
-        const mapped = (data || []).map(m => {
-          const sid = m.senderId || m.sender_id;
-          const created = m.createdAt || m.created_at;
-          const senderName = sid === user.id ? (user.username || 'You') : (selectedUser?.username || 'Support');
-          return {
-            id: m.id,
-            senderId: sid,
-            receiverId: m.receiverId || m.receiver_id,
-            senderName,
-            senderAvatar: m.senderAvatar || null,
-            message: m.message,
-            createdAt: created,
-            isOwn: sid === user.id
-          };
-        });
-        setMessages(mapped);
-      }
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Map to UI format
+      const mapped = (data || []).map(m => {
+        const isOwn = m.sender_id === user.id;
+        const senderName = isOwn ? 'You' : (m.sender?.username || 'Support');
+        const senderAvatar = m.sender?.avatar;
+
+        return {
+          id: m.id,
+          senderId: m.sender_id,
+          receiverId: m.receiver_id,
+          senderName,
+          senderAvatar,
+          message: m.message,
+          createdAt: m.created_at,
+          isOwn
+        };
+      });
+      setMessages(mapped);
     } catch (err) {
       console.error('Error loading messages:', err);
     }
+  };
+
+  const getAdminId = async () => {
+    // Helper to find an admin ID to send message to
+    const { data } = await supabase
+      .from('users')
+      .select('id')
+      .eq('is_admin', true)
+      .limit(1)
+      .single();
+    return data?.id;
   };
 
   const sendMessage = async (e) => {
@@ -118,38 +133,37 @@ const Chat = () => {
 
     setLoading(true);
     try {
-      let receiverId = undefined;
+      let receiverId = null;
       if (user.isAdmin) {
         receiverId = selectedUser?.id;
       } else {
-        // get admin id
-        const adminRes = await fetch('/api/chat/admin', { headers: getAuthHeaders() });
-        if (adminRes.ok) {
-          const admin = await adminRes.json();
-          receiverId = admin?.id;
+        // Find an admin to send to
+        receiverId = await getAdminId();
+        if (!receiverId) {
+          setErrorMessage('No support staff available.');
+          return;
         }
       }
 
-      const res = await fetch('/api/chat/send', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ message: newMessage.trim(), receiverId })
-      });
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert([{
+          sender_id: user.id,
+          receiver_id: receiverId, // If null (broadcast?), schema says uuid not null usually.
+          message: newMessage.trim()
+        }]);
 
-      if (res.ok) {
-        setNewMessage('');
-        loadMessages();
-      }
+      if (error) throw error;
+
+      setNewMessage('');
+      loadMessages();
     } catch (err) {
       console.error('Error sending message:', err);
+      setErrorMessage('Failed to send message.');
     } finally {
       setLoading(false);
     }
   };
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div>
@@ -158,8 +172,8 @@ const Chat = () => {
         <p>{user.isAdmin ? 'Manage customer messages' : 'Chat with our support team'}</p>
       </div>
 
-      <div className="card" style={{padding: '28px', borderRadius: '20px', background: 'linear-gradient(180deg, rgba(18,12,10,0.92), rgba(28,18,14,0.86))', border: '1px solid rgba(255,106,0,0.12)'}}>
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px'}}>
+      <div className="card" style={{ padding: '28px', borderRadius: '20px', background: 'linear-gradient(180deg, rgba(18,12,10,0.92), rgba(28,18,14,0.86))', border: '1px solid rgba(255,106,0,0.12)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
           <h3>Messages</h3>
           {user.isAdmin && (
             <button className="btn btn-secondary" onClick={() => setShowUserList(!showUserList)}>
@@ -167,7 +181,7 @@ const Chat = () => {
             </button>
           )}
           {user.isAdmin && selectedUser && (
-            <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button className="btn btn-secondary" onClick={() => { setEditData({ username: selectedUser.username }); setEditAvatarPreview(selectedUser.avatar || null); setEditModalOpen(true); }}>
                 ✏️ Edit User
               </button>
@@ -176,12 +190,12 @@ const Chat = () => {
         </div>
 
         {showUserList && user.isAdmin && (
-          <div style={{background: 'rgba(255, 106, 0, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid rgba(255, 106, 0, 0.2)'}}>
-            <p style={{color: 'var(--text-muted)', marginBottom: '12px', fontSize: '0.9rem'}}>Select a user to view their messages:</p>
+          <div style={{ background: 'rgba(255, 106, 0, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid rgba(255, 106, 0, 0.2)' }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '12px', fontSize: '0.9rem' }}>Select a user to view their messages:</p>
             {users.length === 0 ? (
-              <p style={{color: 'var(--text-muted)'}}>No users yet</p>
+              <p style={{ color: 'var(--text-muted)' }}>No users yet</p>
             ) : (
-              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px'}}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
                 {users.map(u => (
                   <button
                     key={u.id}
@@ -207,55 +221,7 @@ const Chat = () => {
           </div>
         )}
 
-        <div style={{display: 'flex', gap: '18px'}}>
-          {/* Left-side user/team list (Discord-like) */}
-          <div style={{width: '220px'}}>
-            <div style={{
-              background: 'linear-gradient(180deg, rgba(20,14,12,0.6), rgba(12,8,6,0.45))',
-              borderRadius: '14px',
-              padding: '12px',
-              height: '480px',
-              overflowY: 'auto',
-              border: '1px solid rgba(255,106,0,0.06)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)'
-            }}>
-              <h4 style={{marginTop: 0, marginBottom: '12px', color: 'var(--text-primary)'}}>Users</h4>
-              {user.isAdmin ? (
-                users.length === 0 ? <p style={{color: 'var(--text-muted)'}}>No users</p> : (
-                  <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                    {users.map(u => (
-                      <div key={u.id} style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '10px', background: selectedUser?.id === u.id ? 'linear-gradient(90deg, rgba(255,46,0,0.06), rgba(255,106,0,0.03))' : 'transparent', cursor: 'pointer'}} onClick={() => { setSelectedUser(u); loadMessages(); }}>
-                            {/* Don't show founder's personal image in public chat list; use logo instead */}
-                        {
-                          (() => {
-                            const avatar = u.avatar || '';
-                            const uname = (u.username || '').toLowerCase();
-                            const isFounderAvatar = avatar.toLowerCase().includes('rameez') || uname.includes('rammez') || uname.includes('founder');
-                            const avatarSrc = isFounderAvatar ? '/logo.png' : (u.avatar || '/logo.png');
-                            return <img src={avatarSrc} alt={u.username} style={{width: '40px', height: '40px', borderRadius: '10px'}} />;
-                          })()
-                        }
-                        <div style={{display: 'flex', flexDirection: 'column'}}>
-                          <strong style={{color: 'var(--text-primary)'}}>{u.username}</strong>
-                          <small style={{color: 'var(--text-muted)'}}>id: {u.id}</small>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              ) : (
-                <div>
-                  <h5 style={{color: '#ff6a00', margin: '8px 0'}}>Flame Cloud Team</h5>
-                  {/* Show a single team entry for regular users */}
-                  <div style={{display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px'}}>
-                    <img src={'/logo.png'} alt={'Flame Cloud Team'} style={{width: '40px', height: '40px', borderRadius: '10px'}} />
-                    <span style={{color: 'var(--text-primary)'}}>Flame Cloud Team</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
+        <div style={{ display: 'flex', gap: '18px' }}>
           <div style={{
             flex: 1,
             background: 'transparent',
@@ -270,35 +236,36 @@ const Chat = () => {
             flexDirection: 'column',
             justifyContent: 'flex-end'
           }}>
-          {messages.length === 0 ? (
-            <div style={{textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)'}}>
-              <div style={{fontSize: '2rem', marginBottom: '12px'}}>💬</div>
-              <p>No messages yet. Start the conversation!</p>
-            </div>
-          ) : (
-            messages.map((msg, index) => (
-              <div key={index} style={{display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '8px'}}>
-                <img src={msg.senderAvatar || '/logo.png'} alt={msg.senderName} style={{width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover'}} />
-                <div style={{
-                  maxWidth: '86%',
-                  padding: '8px 10px',
-                  background: 'transparent'
-                }}>
-                  <p style={{color: 'rgba(255,255,255,0.95)', fontSize: '0.75rem', marginBottom: '6px'}}>
-                    {msg.senderName} • {new Date(msg.createdAt).toLocaleTimeString()}
-                  </p>
-                  <p style={{color: '#ffffff', margin: 0, fontSize: '0.95rem', background: 'transparent'}}>{msg.message}</p>
-                </div>
+            {messages.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '12px' }}>💬</div>
+                <p>No messages yet. Start the conversation!</p>
               </div>
-            ))
-          )}
-          <div ref={messagesEndRef} />
+            ) : (
+              messages.map((msg, index) => (
+                <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '8px', flexDirection: msg.isOwn ? 'row-reverse' : 'row' }}>
+                  <img src={msg.senderAvatar || '/logo.png'} alt={msg.senderName} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+                  <div style={{
+                    maxWidth: '80%',
+                    padding: '10px 14px',
+                    background: msg.isOwn ? 'rgba(255, 106, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '12px',
+                    borderTopRightRadius: msg.isOwn ? '2px' : '12px',
+                    borderTopLeftRadius: msg.isOwn ? '12px' : '2px'
+                  }}>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', marginBottom: '4px', textAlign: msg.isOwn ? 'right' : 'left' }}>
+                      {msg.senderName}
+                    </p>
+                    <p style={{ color: '#ffffff', margin: 0, fontSize: '0.95rem' }}>{msg.message}</p>
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
           </div>
-
-          {/* Left-side user list moved above; right side removed */}
         </div>
 
-        <form onSubmit={sendMessage} style={{display: 'flex', gap: '12px', alignItems: 'center', marginTop: '12px'}}>
+        <form onSubmit={sendMessage} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '12px' }}>
           <input
             type="text"
             value={newMessage}
@@ -332,44 +299,33 @@ const Chat = () => {
               cursor: loading || !newMessage.trim() ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? (
-              '⏳'
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
+            ➤
           </button>
         </form>
+        {errorMessage && <div style={{ color: 'red', marginTop: 10, textAlign: 'center' }}>{errorMessage}</div>}
+
         {/* Edit User Modal for Admins */}
         {editModalOpen && selectedUser && (
           <div className="modal-overlay" onClick={() => setEditModalOpen(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '420px'}}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
               <h3>Edit User — {selectedUser.username}</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 try {
-                  const token = localStorage.getItem('token');
-                  const headers = { 'Content-Type': 'application/json' };
-                  if (token) headers.Authorization = `Bearer ${token}`;
-                  const body = { username: editData.username };
-                  if (editAvatarPreview) body.avatar = editAvatarPreview;
-                  const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
-                    method: 'PUT',
-                    headers,
-                    body: JSON.stringify(body)
-                  });
-                  if (res.ok) {
-                    const json = await res.json();
-                    // Refresh users and selected user
+                  const updates = { username: editData.username };
+                  if (editAvatarPreview) updates.avatar = editAvatarPreview;
+
+                  const { error } = await supabase
+                    .from('users')
+                    .update(updates)
+                    .eq('id', selectedUser.id);
+
+                  if (!error) {
                     await loadUsers();
-                    setSelectedUser(json.user);
                     setEditModalOpen(false);
                     alert('User updated');
                   } else {
-                    const t = await res.text();
-                    alert('Update failed: ' + t);
+                    alert('Update failed: ' + error.message);
                   }
                 } catch (err) {
                   console.error(err);
@@ -378,21 +334,21 @@ const Chat = () => {
               }}>
                 <div className="form-group">
                   <label>Username</label>
-                  <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} />
+                  <input value={editData.username} onChange={e => setEditData({ ...editData, username: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Avatar (optional)</label>
                   <input type="file" accept="image/*" onChange={e => {
                     const f = e.target.files && e.target.files[0];
                     if (!f) return;
-                    setEditAvatarFile(f);
+                    // For now using base64 preview as value. For prod, use Supabase Storage.
                     const r = new FileReader();
                     r.onload = () => setEditAvatarPreview(r.result);
                     r.readAsDataURL(f);
                   }} />
-                  {editAvatarPreview && <div style={{marginTop: '8px'}}><img src={editAvatarPreview} alt="preview" style={{width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover'}} /></div>}
+                  {editAvatarPreview && <div style={{ marginTop: '8px' }}><img src={editAvatarPreview} alt="preview" style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} /></div>}
                 </div>
-                <div style={{display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px'}}>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setEditModalOpen(false)}>Cancel</button>
                   <button type="submit" className="btn btn-primary">Save</button>
                 </div>

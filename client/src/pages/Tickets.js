@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, supabase } from '../context/AuthContext';
 
 const Tickets = () => {
   const { user } = useAuth();
@@ -16,11 +16,14 @@ const Tickets = () => {
 
   const loadTickets = async () => {
     try {
-      const res = await fetch('/api/tickets');
-      if (res.ok) {
-        const data = await res.json();
-        setTickets(data);
-      }
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('user_id', user.id) // RLS should handle this too, but explicit filter is good
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTickets(data || []);
     } catch (err) {
       console.error('Error loading tickets:', err);
     }
@@ -34,17 +37,23 @@ const Tickets = () => {
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message })
-      });
+      const { error } = await supabase
+        .from('tickets')
+        .insert([{
+          user_id: user.id,
+          email: user.email, // Store email for admin convenience
+          subject: subject.trim(),
+          message: message.trim(),
+          status: 'open'
+        }]);
 
-      if (res.ok) {
+      if (!error) {
         setShowModal(false);
         setSubject('');
         setMessage('');
         loadTickets();
+      } else {
+        throw error;
       }
     } catch (err) {
       console.error('Error creating ticket:', err);
@@ -55,7 +64,7 @@ const Tickets = () => {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return '#FF6A00';
       case 'in-progress': return '#FFD000';
       case 'resolved': return '#10b981';
@@ -70,7 +79,7 @@ const Tickets = () => {
         <p>Track your support requests</p>
       </div>
 
-      <div style={{marginBottom: '20px'}}>
+      <div style={{ marginBottom: '20px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           ➕ Create New Ticket
         </button>
@@ -100,16 +109,16 @@ const Tickets = () => {
                   <td>#{ticket.id}</td>
                   <td>{ticket.subject}</td>
                   <td>
-                    <span className="badge" style={{borderColor: getStatusColor(ticket.status), color: getStatusColor(ticket.status)}}>
+                    <span className="badge" style={{ borderColor: getStatusColor(ticket.status), color: getStatusColor(ticket.status) }}>
                       {ticket.status}
                     </span>
                   </td>
-                  <td>{new Date(ticket.createdAt).toLocaleDateString()}</td>
+                  <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
                   <td>
                     <button
                       className="btn btn-secondary"
                       onClick={() => setSelectedTicket(ticket)}
-                      style={{padding: '6px 12px', fontSize: '0.85rem'}}
+                      style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                     >
                       View
                     </button>
@@ -164,25 +173,25 @@ const Tickets = () => {
         <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3>🎫 Ticket #{selectedTicket.id}</h3>
-            <div style={{background: 'rgba(255, 106, 0, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px'}}>
-              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Subject</p>
-              <p style={{color: 'var(--text-primary)', fontWeight: '600', marginBottom: '16px'}}>{selectedTicket.subject}</p>
-              
-              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Status</p>
-              <span className="badge" style={{borderColor: getStatusColor(selectedTicket.status), color: getStatusColor(selectedTicket.status)}}>
+            <div style={{ background: 'rgba(255, 106, 0, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>Subject</p>
+              <p style={{ color: 'var(--text-primary)', fontWeight: '600', marginBottom: '16px' }}>{selectedTicket.subject}</p>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>Status</p>
+              <span className="badge" style={{ borderColor: getStatusColor(selectedTicket.status), color: getStatusColor(selectedTicket.status) }}>
                 {selectedTicket.status}
               </span>
             </div>
 
-            <div style={{background: 'rgba(0, 0, 0, 0.2)', padding: '16px', borderRadius: '12px', marginBottom: '20px'}}>
-              <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Your Message</p>
-              <p style={{color: 'var(--text-primary)', lineHeight: '1.6'}}>{selectedTicket.message}</p>
+            <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>Your Message</p>
+              <p style={{ color: 'var(--text-primary)', lineHeight: '1.6' }}>{selectedTicket.message}</p>
             </div>
 
             {selectedTicket.adminResponse && (
-              <div style={{background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid rgba(16, 185, 129, 0.2)'}}>
-                <p style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px'}}>Admin Response</p>
-                <p style={{color: 'var(--text-primary)', lineHeight: '1.6'}}>{selectedTicket.adminResponse}</p>
+              <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>Admin Response</p>
+                <p style={{ color: 'var(--text-primary)', lineHeight: '1.6' }}>{selectedTicket.admin_response}</p>
               </div>
             )}
 
