@@ -33,10 +33,14 @@ Professional Minecraft Hosting Platform by Honey_boy1
 
 1. Push your code to GitHub.
 2. Link your repo to [Vercel](https://vercel.com).
-3. Set the following environment variables in Vercel:
+3. In Vercel, connect your domain: **flamecloud.site**.
+4. Set the following environment variables in Vercel:
    - `REACT_APP_SUPABASE_URL`: Your Supabase URL
    - `REACT_APP_SUPABASE_ANON_KEY`: Your Supabase Anon Key
-4. Deployment will be automatic!
+5. Deployment will be automatic!
+
+> [!IMPORTANT]
+> In your Supabase Dashboard (Authentication → URL Configuration), ensure the **Site URL** is set to `https://flamecloud.site` (with the `https://`).
 
 ### 3. Backend Deployment (Optional)
 
