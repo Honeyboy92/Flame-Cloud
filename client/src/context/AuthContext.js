@@ -17,16 +17,22 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check current session
+    // Check current session with timeout
     const checkSession = async () => {
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           // Get user profile from users table
-          const { data: profile } = await supabase
+          const fetchProfile = supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
+
+          // Race between profile fetch and timeout
+          const { data: profile } = await Promise.race([fetchProfile, timeout]);
 
           setUser({
             id: session.user.id,
@@ -38,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Session check error:', err);
+        // Even if error/timeout, we should stop loading to show the app (maybe login screen)
       } finally {
         setLoading(false);
       }
