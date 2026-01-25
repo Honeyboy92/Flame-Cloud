@@ -137,20 +137,24 @@ const PaidPlans = () => {
       reader.onloadend = async () => {
         const base64Image = reader.result;
         // Submit order to server so admin panel (SQLite) can see it
-        const token = localStorage.getItem('token');
-        const res = await fetch('/api/plans/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
-          body: JSON.stringify({
-            subject: `Plan Order: ${selectedPlan.name}`,
-            message: `Plan: ${selectedPlan.name}\nRAM: ${selectedPlan.ram}\nCPU: ${selectedPlan.cpu}\nPrice: ${selectedPlan.price}\n\nPayment Screenshot Attached`,
-            screenshot: base64Image
-          })
-        });
+        // Submit order as a ticket
+        try {
+          const { error } = await supabase
+            .from('tickets')
+            .insert([{
+              user_id: user.id,
+              user_email: user.email,
+              username: user.username,
+              subject: `Plan Order: ${selectedPlan.name}`,
+              message: `Plan: ${selectedPlan.name}\nRAM: ${selectedPlan.ram}\nCPU: ${selectedPlan.cpu}\nPrice: ${selectedPlan.price}\n\nPayment Screenshot Attached`,
+              screenshot: base64Image,
+              category: 'order',
+              status: 'pending'
+            }]);
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || 'Failed to submit order');
+          if (error) throw error;
+        } catch (dbErr) {
+          throw new Error('Failed to submit order: ' + dbErr.message);
         }
 
         setSuccess('✅ Order submitted successfully! We will verify and activate your server within 24 hours.');
