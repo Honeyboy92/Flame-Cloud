@@ -14,7 +14,7 @@ if (process.env.DATABASE_URL) {
 
   async function initDB() {
     const SQL = await initSqlJs();
-    
+
     // Load existing database or create new
     if (fs.existsSync(DB_PATH)) {
       const buffer = fs.readFileSync(DB_PATH);
@@ -23,7 +23,7 @@ if (process.env.DATABASE_URL) {
       db = new SQL.Database();
     }
 
-    // Create tables
+    // Create tables with snake_case for Supabase compatibility
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,10 +31,11 @@ if (process.env.DATABASE_URL) {
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         avatar TEXT,
-        isAdmin INTEGER DEFAULT 0,
-        hasClaimedFreePlan INTEGER DEFAULT 0,
-        claimedIP TEXT,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        is_admin INTEGER DEFAULT 0,
+        has_claimed_free_plan INTEGER DEFAULT 0,
+        claimed_ip TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_seen TEXT
       )
     `);
 
@@ -48,7 +49,8 @@ if (process.env.DATABASE_URL) {
         location TEXT NOT NULL,
         price TEXT NOT NULL,
         discount INTEGER DEFAULT 0,
-        sortOrder INTEGER DEFAULT 0
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
       )
     `);
 
@@ -60,31 +62,34 @@ if (process.env.DATABASE_URL) {
         cpu TEXT NOT NULL,
         location TEXT NOT NULL,
         description TEXT,
-        sortOrder INTEGER DEFAULT 0
+        sort_order INTEGER DEFAULT 0
       )
     `);
 
     db.run(`
       CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        user_email TEXT,
+        username TEXT,
         subject TEXT NOT NULL,
         message TEXT NOT NULL,
         screenshot TEXT,
         status TEXT DEFAULT 'pending',
-        adminResponse TEXT,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        category TEXT,
+        admin_response TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
     db.run(`
       CREATE TABLE IF NOT EXISTS chat_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        senderId INTEGER NOT NULL,
-        receiverId INTEGER NOT NULL,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
         message TEXT NOT NULL,
-        isRead INTEGER DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -92,7 +97,8 @@ if (process.env.DATABASE_URL) {
       CREATE TABLE IF NOT EXISTS location_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         location TEXT UNIQUE NOT NULL,
-        isAvailable INTEGER DEFAULT 0
+        is_available INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0
       )
     `);
 
@@ -100,11 +106,12 @@ if (process.env.DATABASE_URL) {
       CREATE TABLE IF NOT EXISTS yt_partners (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        link TEXT NOT NULL,
+        channel_link TEXT NOT NULL,
         logo TEXT,
-        isFeatured INTEGER DEFAULT 0,
-        createdAt TEXT,
-        sortOrder INTEGER DEFAULT 0
+        is_featured INTEGER DEFAULT 0,
+        created_at TEXT,
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
       )
     `);
 
@@ -130,27 +137,28 @@ if (process.env.DATABASE_URL) {
     `);
 
     // Initialize default admin
-    const adminExists = db.exec("SELECT * FROM users WHERE isAdmin = 1");
+    const adminExists = db.exec("SELECT * FROM users WHERE is_admin = 1");
     if (adminExists.length === 0 || adminExists[0].values.length === 0) {
       const adminEmail = process.env.ADMIN_EMAIL || 'flamecloud@gmail.com';
       const adminPassword = process.env.ADMIN_PASSWORD || 'GSFY!25V$';
       const hashedPassword = bcrypt.hashSync(adminPassword, 10);
-      db.run("INSERT INTO users (username, email, password, isAdmin) VALUES (?, ?, ?, ?)", 
+      db.run("INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, ?)",
         ['Flame Cloud Admin', adminEmail, hashedPassword, 1]);
     }
 
     // Initialize location settings
     const locationsExist = db.exec("SELECT * FROM location_settings");
     if (locationsExist.length === 0 || locationsExist[0].values.length === 0) {
-      db.run("INSERT INTO location_settings (location, isAvailable) VALUES (?, ?)", ['UAE', 1]);
-      db.run("INSERT INTO location_settings (location, isAvailable) VALUES (?, ?)", ['France', 0]);
-      db.run("INSERT INTO location_settings (location, isAvailable) VALUES (?, ?)", ['Singapore', 0]);
+      db.run("INSERT INTO location_settings (location, is_available, sort_order) VALUES (?, ?, ?)", ['UAE', 1, 1]);
+      db.run("INSERT INTO location_settings (location, is_available, sort_order) VALUES (?, ?, ?)", ['France', 0, 2]);
+      db.run("INSERT INTO location_settings (location, is_available, sort_order) VALUES (?, ?, ?)", ['Singapore', 0, 3]);
     }
 
-    // Initialize YT Partners visibility setting
-    const ytSettingExists = db.exec("SELECT * FROM site_settings WHERE key = 'yt_partners_enabled'");
-    if (ytSettingExists.length === 0 || ytSettingExists[0].values.length === 0) {
+    // Initialize Site Settings
+    const settingsExist = db.exec("SELECT * FROM site_settings");
+    if (settingsExist.length === 0 || settingsExist[0].values.length === 0) {
       db.run("INSERT INTO site_settings (key, value) VALUES (?, ?)", ['yt_partners_enabled', '0']);
+      db.run("INSERT INTO site_settings (key, value) VALUES (?, ?)", ['discord_members', '400+']);
     }
 
     // Initialize default about content
@@ -159,7 +167,7 @@ if (process.env.DATABASE_URL) {
       db.run("INSERT INTO about_content (content, founder_name, owner_name, management_name) VALUES (?, ?, ?, ?)", [
         'Flame Cloud is a next-generation gaming server hosting platform built for speed, power, and reliability.',
         'Flame Founder',
-        'Flame Owner', 
+        'Flame Owner',
         'Flame Management'
       ]);
     }
@@ -179,8 +187,8 @@ if (process.env.DATABASE_URL) {
         { name: 'Black Ruby Plan', ram: '34GB', cpu: '2000%', storage: '200 GB SSD', location: 'UAE', price: '3400 PKR', order: 9 }
       ];
       plans.forEach(p => {
-        db.run("INSERT INTO paid_plans (name, ram, cpu, storage, location, price, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [p.name, p.ram, p.cpu, p.storage, p.location, p.price, p.order]);
+        db.run("INSERT INTO paid_plans (name, ram, cpu, storage, location, price, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          [p.name, p.ram, p.cpu, p.storage, p.location, p.price, p.order, 1]);
       });
     }
 
@@ -203,7 +211,12 @@ if (process.env.DATABASE_URL) {
   // Helper functions
   function prepare(sql) {
     return {
-      run: (...params) => { db.run(sql, params); saveDB(); return { lastInsertRowid: db.exec("SELECT last_insert_rowid()")[0].values[0][0] }; },
+      run: (...params) => {
+        db.run(sql, params);
+        saveDB();
+        const res = db.exec("SELECT last_insert_rowid()");
+        return { lastInsertRowid: res[0].values[0][0] };
+      },
       get: (...params) => {
         const result = db.exec(sql, params);
         if (result.length === 0 || result[0].values.length === 0) return null;

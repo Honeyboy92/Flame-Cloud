@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "node server/index.js",
+    "server": "nodemon server/index.js",
     "client": "cd client && npm start",
     "install-all": "npm install && cd client && npm install",
     "build": "npm install && cd client && npm install && npm run build",
@@ -27,7 +27,8 @@
     "sql.js": "^1.9.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.11"
   },
   "author": "Honey_boy1",
   "license": "ISC"

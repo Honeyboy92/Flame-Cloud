@@ -4,95 +4,83 @@ const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get chat messages between user and admin
-router.get('/messages/:otherUserId', authMiddleware, async (req, res) => {
+// Compatibility for Supabase-style or filter
+// e.g. or=and(sender_id.eq.1,receiver_id.eq.2),and(sender_id.eq.2,receiver_id.eq.1)
+router.get('/', authMiddleware, async (req, res) => {
+  const { or, order, dir } = req.query;
   const userId = req.user.id;
-  const otherUserId = parseInt(req.params.otherUserId);
 
   try {
-    const sql = `SELECT cm.*, su.avatar as senderAvatar FROM chat_messages cm JOIN users su ON cm.senderId = su.id WHERE (cm.senderId = ? AND cm.receiverId = ?) OR (cm.senderId = ? AND cm.receiverId = ?) ORDER BY cm.createdAt`;
-    const messages = prepare(sql).all(userId, otherUserId, otherUserId, userId) || [];
+    let messages = [];
+    if (or) {
+      // Decode or if needed
+      const decodedOr = decodeURIComponent(or);
+      const idsmatch = decodedOr.match(/\.eq\.(\d+)/g);
 
-    // Mark messages as read (messages sent by otherUser to current user)
-    prepare('UPDATE chat_messages SET isRead = 1 WHERE senderId = ? AND receiverId = ?').run(otherUserId, userId);
+      console.log(`[ChatDebug] IDs found: ${JSON.stringify(idsmatch)}`);
 
-    const mappedMessages = messages.map(m => ({
-      id: m.id,
-      senderId: m.senderId,
-      receiverId: m.receiverId,
-      message: m.message,
-      isRead: m.isRead,
-      createdAt: m.createdAt,
-      senderAvatar: m.senderAvatar || null
+      if (idsmatch && idsmatch.length >= 2 && idsmatch[0] !== idsmatch[1]) {
+        const otherId = idsmatch.find(m => m !== `.eq.${userId}`)?.replace('.eq.', '');
+        console.log(`[ChatDebug] Complex OR: identified otherId as ${otherId}`);
+        if (otherId) {
+          const sql = `SELECT cm.*, su.avatar as sender_avatar, su.username as sender_username 
+                       FROM chat_messages cm 
+                       JOIN users su ON cm.sender_id = su.id 
+                       WHERE (cm.sender_id = ? AND cm.receiver_id = ?) 
+                          OR (cm.sender_id = ? AND cm.receiver_id = ?) 
+                       ORDER BY cm.created_at ${dir === 'desc' ? 'DESC' : 'ASC'}`;
+          messages = prepare(sql).all(userId, otherId, otherId, userId);
+        }
+      } else {
+        const sql = `SELECT cm.*, su.avatar as sender_avatar, su.username as sender_username 
+                     FROM chat_messages cm 
+                     JOIN users su ON cm.sender_id = su.id 
+                     WHERE cm.sender_id = ? OR cm.receiver_id = ? 
+                     ORDER BY cm.created_at ${dir === 'desc' ? 'DESC' : 'ASC'}`;
+        messages = prepare(sql).all(userId, userId);
+      }
+    } else {
+      messages = prepare('SELECT * FROM chat_messages ORDER BY created_at ASC').all();
+    }
+
+    // Map to frontend expectation
+    const mapped = messages.map(m => ({
+      ...m,
+      sender: { username: m.sender_username, avatar: m.sender_avatar }
     }));
 
-    res.json(mappedMessages);
+    res.json(mapped);
   } catch (err) {
-    console.error('Error fetching messages:', err);
-    res.status(500).json({ error: 'Failed to load messages' });
+    console.error('Chat fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
   }
 });
 
-// Send message
-router.post('/send', authMiddleware, async (req, res) => {
-  const { receiverId, message } = req.body;
-  const senderId = req.user.id;
-
-  if (!message || !receiverId) {
-    return res.status(400).json({ error: 'Message and receiver required' });
-  }
+// Send message (mapped from chat_messages table)
+router.post('/', authMiddleware, (req, res) => {
+  const { sender_id, receiver_id, message } = req.body;
+  if (!message || !receiver_id) return res.status(400).json({ error: 'Missing data' });
 
   try {
-    const insert = prepare('INSERT INTO chat_messages (senderId, receiverId, message, isRead, createdAt) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)');
-    const result = insert.run(senderId, receiverId, message);
-    res.json({ id: result.lastInsertRowid, message: 'Message sent' });
+    const result = prepare('INSERT INTO chat_messages (sender_id, receiver_id, message) VALUES (?, ?, ?)')
+      .run(sender_id || req.user.id, receiver_id, message);
+    res.json({ id: result.lastInsertRowid, message: 'Sent' });
   } catch (err) {
-    console.error('Error sending message:', err);
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: 'Send failed' });
   }
 });
 
-// Get admin user (for regular users to chat with)
-router.get('/admin', authMiddleware, async (req, res) => {
-  try {
-    const admin = prepare('SELECT id, username FROM users WHERE isAdmin = 1 LIMIT 1').get();
-    res.json(admin || null);
-  } catch (err) {
-    console.error('Error fetching admin:', err);
-    res.status(500).json({ error: 'Failed to load admin' });
-  }
+// Admin-specific users list
+router.get('/users-list', authMiddleware, (req, res) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin only' });
+  const users = prepare('SELECT id, username, avatar, last_seen FROM users WHERE is_admin = 0 ORDER BY last_seen DESC').all();
+  res.json(users);
 });
 
-// Get all users with unread count (for admin)
-router.get('/users', authMiddleware, async (req, res) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'Admin only' });
-  }
-
-  try {
-    const users = prepare('SELECT id, username, email, avatar FROM users WHERE isAdmin = 0 ORDER BY username').all() || [];
-
-    const usersWithUnread = users.map(u => {
-      const c = prepare('SELECT COUNT(*) as cnt FROM chat_messages WHERE senderId = ? AND receiverId = ? AND isRead = 0').get(u.id, req.user.id);
-      return { ...u, unreadCount: c?.cnt || 0 };
-    });
-
-    res.json(usersWithUnread);
-  } catch (err) {
-    console.error('Error fetching users:', err);
-    res.status(500).json({ error: 'Failed to load users' });
-  }
-});
-
-// Get unread count for user
-router.get('/unread', authMiddleware, async (req, res) => {
-  const { count } = await supabase
-    .from('chat_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('receiver_id', req.user.id)
-    .eq('is_read', false);
-  
-  res.json({ unread: count || 0 });
+// Support admin getter
+router.get('/admin', authMiddleware, (req, res) => {
+  const admin = prepare('SELECT id, username FROM users WHERE is_admin = 1 LIMIT 1').get();
+  res.json(admin);
 });
 
 module.exports = router;

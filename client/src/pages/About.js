@@ -40,7 +40,10 @@ const About = () => {
     <div>
       {/* Hero Section */}
       <div className="page-header">
-        <h2>🔥 About Flame Cloud</h2>
+        <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <img src="/logo.png" alt="" style={{ width: '38px', height: '38px', objectFit: 'contain' }} />
+          About Flame Cloud
+        </h2>
         <p>Premium Gaming Server Hosting Platform</p>
       </div>
 

@@ -15,8 +15,10 @@ const authMiddleware = (req, res, next) => {
 };
 
 const adminMiddleware = (req, res, next) => {
+  console.log(`[AdminCheck] URL: ${req.method} ${req.originalUrl}, UserID: ${req.user?.id}, IsAdmin: ${req.user?.isAdmin}`);
   if (!req.user?.isAdmin) {
-    return res.status(403).json({ error: 'Admin access required' });
+    console.log(`[AdminCheck] Denied for ${req.user?.id}`);
+    return res.status(403).json({ error: `Admin access required (Route: ${req.method} ${req.originalUrl})` });
   }
   next();
 };

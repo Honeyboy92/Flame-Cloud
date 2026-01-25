@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 5000;
 
 // CORS configuration for production
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? true  // Allow same origin in production
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true
@@ -21,19 +21,30 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 async function startServer() {
   await initDB();
-  
-  // API Routes
+
+  // API Routes (Users must be first to avoid collisions)
+  app.use('/api/users', require('./routes/users'));
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/plans', require('./routes/plans'));
   app.use('/api/tickets', require('./routes/tickets'));
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/about', require('./routes/about'));
-  app.use('/api/chat', require('./routes/chat'));
+  app.use('/api/chat_messages', require('./routes/chat'));
+
+  // Consistent aliases for Supabase shim
+  app.use('/api/yt_partners', require('./routes/admin'));
+  app.use('/api/location_settings', require('./routes/plans'));
+  app.use('/api/paid_plans', require('./routes/plans'));
+
+  // Ensure ALL 404s in /api return JSON, not HTML
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.originalUrl}` });
+  });
 
   // Serve static files in production
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../client/build')));
-    
+
     // Handle React routing - serve index.html for all non-API routes
     app.get('*', (req, res) => {
       if (!req.path.startsWith('/api')) {

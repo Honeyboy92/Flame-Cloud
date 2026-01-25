@@ -2,106 +2,62 @@
 
 Professional Minecraft Hosting Platform by Honey_boy1
 
-## Features
+## ✨ Features
 
-- 🎮 Premium Minecraft Server Hosting Plans
-- 👤 User Authentication System
-- 🎫 Ticket/Order System with Payment Screenshots
-- 💬 Live Chat Support
-- ⚙️ Admin Panel with Full Control
-- 🌙 Modern Dark Theme UI
+- 🎮 **Premium Minecraft Server Hosting Plans** - Tiered plans with RAM, CPU, and Storage variants.
+- 🌍 **Multi-Location Support** - Global server locations with availability control.
+- 👤 **User Profile System** - Customizable profiles with avatars and activity tracking.
+- 🎫 **Support Tickets** - Integrated ticketing system for orders and technical help.
+- 💬 **Live Chat** - Real-time "Flame Cloud Team" chat with modern list-style UI.
+- ⚙️ **Power Admin Panel** - Full CRUD for plans, users, partners, and locations.
+- 📸 **Image Upload** - Direct image upload for YT Partners logos (Base64).
+- 🌙 **Next-Gen UI** - High-premium dark theme with smooth gradients and animations.
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **Frontend:** React.js
-- **Backend:** Node.js + Express
-- **Database:** SQLite (sql.js)
-- **Auth:** JWT
+- **Frontend:** React.js (Hooks, Context API)
+- **Backend:** Node.js + Express (with local API shim)
+- **Database:** Supabase (PostgreSQL) / local SQLite proxy
+- **Auth:** JWT (Local) / Supabase Auth
 
-## Local Development
+## 🚀 Deployment Guide
 
-```bash
-# Install dependencies
-npm run install-all
+### 1. Database Setup (Supabase)
 
-# Run development (both frontend & backend)
-npm run dev
+1. Create a new project at [supabase.com](https://supabase.com).
+2. Go to the **SQL Editor** in your Supabase dashboard.
+3. Copy the contents of [`supabase_setup.sql`](./supabase_setup.sql) and run it.
+4. Go to **Project Settings → API** to get your `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 
-# Or run separately:
-npm run server  # Backend on port 5000
-npm run client  # Frontend on port 3000
-```
+### 2. Frontend Deployment (Vercel)
 
-## Production Deployment
+1. Push your code to GitHub.
+2. Link your repo to [Vercel](https://vercel.com).
+3. Set the following environment variables in Vercel:
+   - `REACT_APP_SUPABASE_URL`: Your Supabase URL
+   - `REACT_APP_SUPABASE_ANON_KEY`: Your Supabase Anon Key
+4. Deployment will be automatic!
 
-### Option 1: Railway (Recommended)
+### 3. Backend Deployment (Optional)
 
-1. Push code to GitHub
-2. Go to [railway.app](https://railway.app)
-3. Create new project → Deploy from GitHub
-4. Add environment variables:
-   - `NODE_ENV=production`
-   - `JWT_SECRET=your-secret-key`
-   - `ADMIN_EMAIL=your-admin-email`
-   - `ADMIN_PASSWORD=your-admin-password`
-5. Deploy!
+If you wish to use the advanced Node.js features (like the API shim), deploy the `server/` folder to **Railway** or **Render**:
+1. Set `DATABASE_URL` (if using Postgres).
+2. Set `JWT_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`.
 
-### Option 2: Render
+## 🛠️ Environment Variables
 
-1. Push code to GitHub
-2. Go to [render.com](https://render.com)
-3. Create new Web Service → Connect GitHub repo
-4. Build Command: `npm install && cd client && npm install && npm run build`
-5. Start Command: `npm start`
-6. Add environment variables
-7. Deploy!
+| Variable | Description |
+|----------|-------------|
+| `REACT_APP_SUPABASE_URL` | Your Supabase Project URL |
+| `REACT_APP_SUPABASE_ANON_KEY` | Your Supabase Public API Key |
+| `JWT_SECRET` | Secret key for local JWT auth |
+| `ADMIN_EMAIL` | Default admin email |
+| `ADMIN_PASSWORD` | Default admin password |
 
-### Option 3: VPS (DigitalOcean, Linode, etc.)
-
-```bash
-# Clone repo
-git clone <your-repo-url>
-cd flame-cloud
-
-# Install dependencies
-npm run install-all
-
-# Build frontend
-npm run build
-
-# Set environment variables
-export NODE_ENV=production
-export JWT_SECRET=your-secret-key
-export ADMIN_EMAIL=your-admin-email
-export ADMIN_PASSWORD=your-admin-password
-
-# Run with PM2
-npm install -g pm2
-pm2 start server/index.js --name flame-cloud
-```
-
-## Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NODE_ENV` | Environment mode (`production` for live) | Yes |
-| `PORT` | Server port | No (default: 5000) |
-| `JWT_SECRET` | JWT signing key (use strong random string) | Yes |
-| `ADMIN_EMAIL` | Admin login email | Yes |
-| `ADMIN_PASSWORD` | Admin login password | Yes |
-
-## Admin Access
-
-⚠️ **Set your own admin credentials using environment variables before deploying!**
-
-Default development credentials (change in production):
-- Email: Set via `ADMIN_EMAIL` env variable
-- Password: Set via `ADMIN_PASSWORD` env variable
-
-## Author
+## 👥 Authors & Team
 
 Created by **Honey_boy1**
 
-### Team
-- **Owners:** Rameez_xD
-- **Managers:** TGK, Newest_YT
+- **Founder:** Rameez_xD
+- **Owner:** TGKFLEX
+- **Management:** !Pie LEGEND

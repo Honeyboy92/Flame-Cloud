@@ -486,16 +486,48 @@ const AdminPanel = () => {
               <input type="text" value={partnerForm.link} onChange={e => setPartnerForm({ ...partnerForm, link: e.target.value })} />
             </div>
             <div className="form-group">
-              <label>Logo URL</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input type="text" value={partnerForm.logo} onChange={e => setPartnerForm({ ...partnerForm, logo: e.target.value })} style={{ flex: 1 }} />
-                {/* File upload removed for simplicity or needs Supabase Storage */}
+              <label>Logo (Upload)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    const f = e.target.files && e.target.files[0];
+                    if (!f) return;
+                    const r = new FileReader();
+                    r.onload = () => {
+                      setPartnerForm({ ...partnerForm, logo: r.result });
+                      setPartnerLogoPreview(r.result);
+                    };
+                    r.readAsDataURL(f);
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255,106,0,0.2)',
+                    color: '#fff'
+                  }}
+                />
+
+                {(partnerLogoPreview || partnerForm.logo) && (
+                  <div style={{
+                    marginTop: 8,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.2)',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 106, 0, 0.1)'
+                  }}>
+                    <img
+                      src={partnerLogoPreview || partnerForm.logo}
+                      alt="preview"
+                      style={{ width: '120px', height: 'auto', maxHeight: '80px', objectFit: 'contain', borderRadius: '6px' }}
+                    />
+                  </div>
+                )}
               </div>
-              {partnerForm.logo && (
-                <div style={{ marginTop: 8 }}>
-                  <img src={partnerForm.logo} alt="preview" style={{ width: 80, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)' }} />
-                </div>
-              )}
             </div>
             <div className="form-group">
               <label><input type="checkbox" checked={!!partnerForm.isFeatured} onChange={e => setPartnerForm({ ...partnerForm, isFeatured: e.target.checked })} /> Featured</label>
