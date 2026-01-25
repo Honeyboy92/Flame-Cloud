@@ -40,7 +40,13 @@ Professional Minecraft Hosting Platform by Honey_boy1
 5. Deployment will be automatic!
 
 > [!IMPORTANT]
-> In your Supabase Dashboard (Authentication → URL Configuration), ensure the **Site URL** is set to `https://flamecloud.site` (with the `https://`).
+> In your Supabase Dashboard (Authentication → URL Configuration):
+> 1. Set **Site URL** to `https://flamecloud.site`
+> 2. Add the following to **Redirect URLs**:
+>    - `https://flamecloud.site/**` (Wildcard for all pages)
+>    - `https://flamecloud.site/login`
+>    - `https://flamecloud.site/signup`
+>    - `https://flamecloud.site/dashboard`
 
 ### 3. Backend Deployment (Optional)
 
