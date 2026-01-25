@@ -129,6 +129,24 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeletePlan = async (id) => {
+    if (!confirm('Are you sure you want to delete this plan?')) return;
+    try {
+      const { error } = await supabase
+        .from('paid_plans')
+        .delete()
+        .eq('id', id);
+
+      if (!error) {
+        loadData();
+      } else {
+        alert('Failed to delete plan');
+      }
+    } catch (err) {
+      console.error('Error deleting plan:', err);
+    }
+  };
+
   const handleRestoreDefaults = async () => {
     if (!confirm('Restore default paid plans? This will insert standard plans if missing.')) return;
     // We cannot call server endpoint. We must insert manually if needed.
@@ -288,13 +306,22 @@ const AdminPanel = () => {
                       <td>{plan.cpu}</td>
                       <td>{plan.price}</td>
                       <td>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleEditPlan(plan)}
-                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                        >
-                          Edit
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => handleEditPlan(plan)}
+                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn btn-danger"
+                            onClick={() => handleDeletePlan(plan.id)}
+                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
