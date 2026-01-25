@@ -1,10 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
-// Local Auth Setup
-const API_URL = '/api/auth';
-const TOKEN_KEY = 'flame_token';
-
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
@@ -13,71 +9,78 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Check for active session on load
   useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) {
-        setLoading(false);
-        return;
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await fetchUserProfile(session.user.id);
       }
-
-      try {
-        const res = await fetch(`${API_URL}/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-        } else {
-          localStorage.removeItem(TOKEN_KEY);
-        }
-      } catch (err) {
-        console.error('Session check error:', err);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     };
 
-    checkSession();
-  }, []);
+    getSession();
 
-  const login = async (email, password) => {
-    const res = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        await fetchUserProfile(session.user.id);
+      } else {
+        setUser(null);
+      }
     });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Login failed');
-    }
+    return () => subscription.unsubscribe();
+  }, []);
 
-    localStorage.setItem(TOKEN_KEY, data.token);
-    setUser(data.user);
+  const fetchUserProfile = async (uid) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .single();
+
+      if (!error && data) {
+        // Map DB flags to what the app expects
+        setUser({
+          ...data,
+          isAdmin: !!data.is_admin
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching profile:', e);
+    }
+  };
+
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await fetchUserProfile(data.user.id);
     return data.user;
   };
 
   const signup = async (username, email, password) => {
-    const res = await fetch(`${API_URL}/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password })
-    });
+    // 1. Sign up in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+    if (authError) throw authError;
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Signup failed');
+    if (authData.user) {
+      // 2. Create the profile in our users table
+      const { error: profileError } = await supabase.from('users').insert([{
+        id: authData.user.id,
+        username,
+        email,
+        is_admin: false
+      }]);
+      if (profileError) throw profileError;
     }
 
-    return data;
+    return authData.user;
   };
 
   const logout = async () => {
-    localStorage.removeItem(TOKEN_KEY);
+    await supabase.auth.signOut();
     setUser(null);
   };
 
