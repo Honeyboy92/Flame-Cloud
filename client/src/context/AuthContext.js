@@ -11,6 +11,12 @@ export const AuthProvider = ({ children }) => {
 
   // Check for active session on load
   useEffect(() => {
+    // Safety timeout: ensure loading screen disappears after 3 seconds max
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      console.warn('Auth initialization timed out, forcing loading to false.');
+    }, 3000);
+
     const getSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -21,6 +27,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Session initialization error:', error);
       } finally {
         setLoading(false);
+        clearTimeout(timeoutId);
       }
     };
 
