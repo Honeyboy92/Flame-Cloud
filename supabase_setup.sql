@@ -114,4 +114,9 @@ INSERT INTO public.paid_plans (name, ram, cpu, storage, location, price, sort_or
 ('Silver Plan', '4GB', '150%', '20 GB SSD', 'UAE', '400 PKR', 2),
 ('Gold Plan', '8GB', '250%', '30 GB SSD', 'UAE', '600 PKR', 3),
 ('Platinum Plan', '10GB', '300%', '40 GB SSD', 'UAE', '800 PKR', 4),
-('Black Ruby Plan', '64GB', '2000%', '200 GB SSD', 'UAE', '6400 PKR', 9);
+('Emerald Plan', '12GB', '350%', '50 GB SSD', 'UAE', '1200 PKR', 5),
+('Amethyst Plan', '14GB', '400%', '60 GB SSD', 'UAE', '1400 PKR', 6),
+('Diamond Plan', '16GB', '500%', '80 GB SSD', 'UAE', '1600 PKR', 7),
+('Ruby Plan', '32GB', '1000%', '100 GB SSD', 'UAE', '3200 PKR', 8),
+('Black Ruby Plan', '64GB', '2000%', '200 GB SSD', 'UAE', '6400 PKR', 9)
+ON CONFLICT DO NOTHING;
