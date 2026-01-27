@@ -5,6 +5,16 @@
   padding: 0;
   box-sizing: border-box;
   cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><defs><linearGradient id='f1' x1='0%25' y1='100%25' x2='0%25' y2='0%25'><stop offset='0%25' stop-color='%23FF2E00'/><stop offset='50%25' stop-color='%23FF6A00'/><stop offset='100%25' stop-color='%23FFD000'/></linearGradient><filter id='glow'><feGaussianBlur stdDeviation='1' result='blur'/><feMerge><feMergeNode in='blur'/><feMergeNode in='blur'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs><path d='M0,0 L0,20 L5,15 L10,15 L15,15 Z' fill='url(%23f1)' stroke='%23000' stroke-width='1' filter='url(%23glow)'/></svg>") 0 0, auto !important;
+}
+
+/* Targeted transitions for performance */
+a,
+button,
+.nav-item,
+.card,
+.btn,
+.plan-card,
+.stat-box {
   transition: all 0.2s ease;
 }
 
