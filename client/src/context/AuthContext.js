@@ -1,9 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import axios from 'axios';
 import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
+
+// Configure axios base URL
+const API_BASE = process.env.REACT_APP_API_URL || '';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -11,88 +15,62 @@ export const AuthProvider = ({ children }) => {
 
   // Check for active session on load
   useEffect(() => {
-    // Safety timeout: ensure loading screen disappears after 3 seconds max
-    const timeoutId = setTimeout(() => {
-      setLoading(false);
-      console.warn('Auth initialization timed out, forcing loading to false.');
-    }, 3000);
-
-    const getSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await fetchUserProfile(session.user.id);
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // Set default authorization header
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          const response = await axios.get(`${API_BASE}/api/auth/me`);
+          if (response.data) {
+            setUser({
+              ...response.data,
+              isAdmin: !!response.data.isAdmin
+            });
+          }
+        } catch (error) {
+          console.error('Session initialization error:', error);
+          localStorage.removeItem('token');
+          delete axios.defaults.headers.common['Authorization'];
         }
-      } catch (error) {
-        console.error('Session initialization error:', error);
-      } finally {
-        setLoading(false);
-        clearTimeout(timeoutId);
       }
+      setLoading(false);
     };
 
-    getSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        await fetchUserProfile(session.user.id);
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    initAuth();
   }, []);
 
-  const fetchUserProfile = async (uid) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', uid)
-        .single();
-
-      if (!error && data) {
-        // Map DB flags to what the app expects
-        setUser({
-          ...data,
-          isAdmin: !!data.is_admin
-        });
-      }
-    } catch (e) {
-      console.error('Error fetching profile:', e);
-    }
-  };
-
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    await fetchUserProfile(data.user.id);
-    return data.user;
+    try {
+      const response = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
+      const { token, user: userData } = response.data;
+
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      const userWithFlag = {
+        ...userData,
+        isAdmin: !!userData.isAdmin
+      };
+      setUser(userWithFlag);
+      return userWithFlag;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
   };
 
   const signup = async (username, email, password) => {
-    // 1. Sign up in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-    if (authError) throw authError;
-
-    if (authData.user) {
-      // 2. Create the profile in our users table
-      const { error: profileError } = await supabase.from('users').insert([{
-        id: authData.user.id,
-        username,
-        email,
-        is_admin: false
-      }]);
-      if (profileError) throw profileError;
+    try {
+      const response = await axios.post(`${API_BASE}/api/auth/signup`, { username, email, password });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
     }
-
-    return authData.user;
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
   };
 

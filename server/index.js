@@ -35,6 +35,8 @@ async function startServer() {
   app.use('/api/yt_partners', require('./routes/admin'));
   app.use('/api/location_settings', require('./routes/plans'));
   app.use('/api/paid_plans', require('./routes/plans'));
+  app.use('/api/site_settings', require('./routes/plans'));
+  app.use('/api/about_content', require('./routes/about'));
 
   // Ensure ALL 404s in /api return JSON, not HTML
   app.all('/api/*', (req, res) => {

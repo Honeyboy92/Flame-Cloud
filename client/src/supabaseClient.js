@@ -1,12 +1,84 @@
-import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://gespgnetqvlxaarwkvtr.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlc3BnbmV0cXZseGFhcndrdnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNTk3NTgsImV4cCI6MjA4NDkzNTc1OH0.4kjI2iX6SiXvIEuuBX2TRmz-6UsttAB3g8M-whXPQfY';
+const API_BASE = process.env.REACT_APP_API_URL || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase URL and Anon Key are missing! Check your .env file.');
-}
+// Lightweight Supabase shim to redirect requests to local API
+const createShim = () => {
+  const query = (table, method = 'GET', data = null) => {
+    let url = `${API_BASE}/api/${table}`;
+    const params = {};
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const builder = {
+      select: (cols) => {
+        // In our local API, we usually just get everything
+        return builder;
+      },
+      eq: (col, val) => {
+        params[col] = val;
+        return builder;
+      },
+      order: (col, { ascending = true } = {}) => {
+        params.sort = col;
+        params.order = ascending ? 'asc' : 'desc';
+        return builder;
+      },
+      single: () => {
+        params.single = true;
+        return builder;
+      },
+      insert: (items) => {
+        return query(table, 'POST', Array.isArray(items) ? items[0] : items);
+      },
+      // Promise-like behavior
+      then: async (onSuccess, onError) => {
+        try {
+          const config = { params };
+          let res;
+          if (method === 'POST') {
+            res = await axios.post(url, data);
+          } else if (method === 'PUT') {
+            res = await axios.put(url, data);
+          } else if (method === 'DELETE') {
+            res = await axios.delete(url, { params });
+          } else {
+            res = await axios.get(url, { params });
+          }
 
-console.log('--- Flame Cloud: Using Real Supabase Client ---');
+          // If .single() was called and we got an array, return the first item
+          let resultData = res.data;
+          if (params.single && Array.isArray(resultData)) {
+            resultData = resultData[0] || null;
+          }
+
+          // Supabase returns { data, error }
+          const result = { data: resultData, error: null };
+          if (onSuccess) return onSuccess(result);
+          return result;
+        } catch (err) {
+          const result = { data: null, error: err.response?.data || err };
+          if (onError) return onError(result);
+          if (onSuccess) return onSuccess(result); // Supabase pattern often handles error in onSuccess check
+          return result;
+        }
+      }
+    };
+
+    return builder;
+  };
+
+  return {
+    from: (table) => query(table),
+    auth: {
+      // Auth is handled in AuthContext, but we can add stubs if needed
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+      signInWithPassword: () => { throw new Error('Use AuthContext.login'); },
+      signUp: () => { throw new Error('Use AuthContext.signup'); },
+      signOut: async () => ({ error: null })
+    }
+  };
+};
+
+export const supabase = createShim();
+
+console.log('--- Flame Cloud: Using Local API Shim (Supabase Mock) ---');

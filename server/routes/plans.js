@@ -4,8 +4,26 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get all paid plans (mapped from table: paid_plans)
+// Generic root route for shim compatibility
 router.get('/', (req, res) => {
+  const table = req.baseUrl.split('/').pop();
+
+  if (table === 'location_settings') {
+    const locations = prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
+    return res.json(locations);
+  }
+
+  if (table === 'site_settings') {
+    const { key } = req.query;
+    if (key) {
+      const setting = prepare('SELECT * FROM site_settings WHERE key=?').get(key);
+      return res.json(setting || { key, value: '0' });
+    }
+    const settings = prepare('SELECT * FROM site_settings').all();
+    return res.json(settings);
+  }
+
+  // Default to paid_plans
   const showAll = req.query.is_active === 'false' || req.query.all === 'true';
   let sql = 'SELECT * FROM paid_plans WHERE is_active = 1 ORDER BY sort_order';
 
