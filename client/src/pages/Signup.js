@@ -31,8 +31,8 @@ const Signup = () => {
     setLoading(true);
     try {
       await signup(username, email, password);
-      setSuccess('Account created successfully! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 2000);
+      setSuccess('Account created successfully! Please check your email for a confirmation link (if required) then login.');
+      setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       setError(err.message || 'Signup failed. Please try again.');
     } finally {

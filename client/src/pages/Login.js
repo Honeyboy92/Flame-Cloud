@@ -32,7 +32,11 @@ const Login = () => {
       // For now, navigate to dashboard - admin check can be added later
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Invalid credentials. Please try again.');
+      if (err.message?.includes('Email not confirmed')) {
+        setError('Please check your email and confirm your account before logging in. (Or tell the admin to disable email confirmation)');
+      } else {
+        setError(err.message || 'Invalid credentials. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
