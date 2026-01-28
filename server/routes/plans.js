@@ -5,21 +5,21 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const router = express.Router();
 
 // Generic root route for shim compatibility
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const table = req.baseUrl.split('/').pop();
 
   if (table === 'location_settings') {
-    const locations = prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
+    const locations = await prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
     return res.json(locations);
   }
 
   if (table === 'site_settings') {
     const { key } = req.query;
     if (key) {
-      const setting = prepare('SELECT * FROM site_settings WHERE key=?').get(key);
+      const setting = await prepare('SELECT * FROM site_settings WHERE key=?').get(key);
       return res.json(setting || { key, value: '0' });
     }
-    const settings = prepare('SELECT * FROM site_settings').all();
+    const settings = await prepare('SELECT * FROM site_settings').all();
     return res.json(settings);
   }
 
@@ -31,73 +31,73 @@ router.get('/', (req, res) => {
     sql = 'SELECT * FROM paid_plans ORDER BY sort_order';
   }
 
-  const plans = prepare(sql).all();
+  const plans = await prepare(sql).all();
   res.json(plans);
 });
 
 // Admin CRUD for paid plans (mapped to table: paid_plans)
-router.post('/', authMiddleware, adminMiddleware, (req, res) => {
+router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
   const { name, ram, cpu, storage, location, price, discount, sort_order } = req.body;
-  const result = prepare('INSERT INTO paid_plans (name, ram, cpu, storage, location, price, discount, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+  const result = await prepare('INSERT INTO paid_plans (name, ram, cpu, storage, location, price, discount, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(name, ram, cpu, storage, location, price, discount || 0, sort_order || 0);
   res.json({ id: result.lastInsertRowid, message: 'Plan created' });
 });
 
-router.put('/:id', authMiddleware, adminMiddleware, (req, res) => {
+router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { name, ram, cpu, storage, location, price, discount, sort_order } = req.body;
-  prepare('UPDATE paid_plans SET name=?, ram=?, cpu=?, storage=?, location=?, price=?, discount=?, sort_order=? WHERE id=?')
+  await prepare('UPDATE paid_plans SET name=?, ram=?, cpu=?, storage=?, location=?, price=?, discount=?, sort_order=? WHERE id=?')
     .run(name, ram, cpu, storage, location, price, discount || 0, sort_order || 0, req.params.id);
   res.json({ message: 'Plan updated' });
 });
 
-router.delete('/:id', authMiddleware, adminMiddleware, (req, res) => {
-  prepare('DELETE FROM paid_plans WHERE id=?').run(req.params.id);
+router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  await prepare('DELETE FROM paid_plans WHERE id=?').run(req.params.id);
   res.json({ message: 'Plan deleted' });
 });
 
 // Added generic table name route for shim compatibility
-router.get('/paid_plans', (req, res) => {
-  const plans = prepare('SELECT * FROM paid_plans WHERE is_active = 1 ORDER BY sort_order').all();
+router.get('/paid_plans', async (req, res) => {
+  const plans = await prepare('SELECT * FROM paid_plans WHERE is_active = 1 ORDER BY sort_order').all();
   res.json(plans);
 });
 
-router.get('/paid', (req, res) => {
-  const plans = prepare('SELECT * FROM paid_plans WHERE is_active = 1 ORDER BY sort_order').all();
+router.get('/paid', async (req, res) => {
+  const plans = await prepare('SELECT * FROM paid_plans WHERE is_active = 1 ORDER BY sort_order').all();
   res.json(plans);
 });
 
-router.get('/free', (req, res) => {
-  const plans = prepare('SELECT * FROM free_plans ORDER BY sort_order').all();
+router.get('/free', async (req, res) => {
+  const plans = await prepare('SELECT * FROM free_plans ORDER BY sort_order').all();
   res.json(plans);
 });
 
 // Get location availability (mapped from table: location_settings)
-router.get('/locations', (req, res) => {
-  const locations = prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
+router.get('/locations', async (req, res) => {
+  const locations = await prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
   res.json(locations);
 });
 
-router.put('/locations/:id', authMiddleware, adminMiddleware, (req, res) => {
+router.put('/locations/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { is_available } = req.body;
-  prepare('UPDATE location_settings SET is_available=? WHERE id=?').run(is_available ? 1 : 0, req.params.id);
+  await prepare('UPDATE location_settings SET is_available=? WHERE id=?').run(is_available ? 1 : 0, req.params.id);
   res.json({ message: 'Location updated' });
 });
 
 // Added generic table name route for shim compatibility
-router.get('/location_settings', (req, res) => {
-  const locations = prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
+router.get('/location_settings', async (req, res) => {
+  const locations = await prepare('SELECT * FROM location_settings ORDER BY sort_order').all();
   res.json(locations);
 });
 
 // Check if user can access free plans
-router.get('/free-plan-status', authMiddleware, (req, res) => {
+router.get('/free-plan-status', authMiddleware, async (req, res) => {
   const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
-  const user = prepare('SELECT has_claimed_free_plan FROM users WHERE id = ?').get(req.user.id);
-  const ipClaimed = prepare('SELECT id FROM users WHERE claimed_ip = ? AND has_claimed_free_plan = 1').get(clientIP);
+  const user = await prepare('SELECT has_claimed_free_plan FROM users WHERE id = ?').get(req.user.id);
+  const ipClaimed = await prepare('SELECT id FROM users WHERE claimed_ip = ? AND has_claimed_free_plan = 1').get(clientIP);
 
   res.json({
     canClaim: !user?.has_claimed_free_plan && !ipClaimed,
-    hasClaimed: user?.has_claimed_free_plan === 1,
+    hasClaimed: (user?.has_claimed_free_plan === 1 || user?.has_claimed_free_plan === true),
     ipAlreadyUsed: !!ipClaimed
   });
 });

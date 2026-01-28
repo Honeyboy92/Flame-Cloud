@@ -6,32 +6,32 @@ const { JWT_SECRET, authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/signup', (req, res) => {
+router.post('/signup', async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields required' });
   }
   try {
     const hashedPassword = bcrypt.hashSync(password, 10);
-    prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)').run(username, email, hashedPassword);
+    await prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)').run(username, email, hashedPassword);
     res.json({ message: 'Account created successfully' });
   } catch (err) {
     res.status(400).json({ error: 'Username or email already exists' });
   }
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = prepare('SELECT * FROM users WHERE email = ?').get(email);
+  const user = await prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const token = jwt.sign({ id: user.id, username: user.username, email: user.email, isAdmin: user.is_admin }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user: { id: user.id, username: user.username, email: user.email, isAdmin: user.is_admin } });
+  const token = jwt.sign({ id: user.id, username: user.username, email: user.email, isAdmin: user.is_admin || user.isadmin }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token, user: { id: user.id, username: user.username, email: user.email, isAdmin: user.is_admin || user.isadmin } });
 });
 
-router.get('/me', authMiddleware, (req, res) => {
-  const user = prepare('SELECT id, username, email, is_admin as isAdmin, avatar, created_at as createdAt FROM users WHERE id = ?').get(req.user.id);
+router.get('/me', authMiddleware, async (req, res) => {
+  const user = await prepare('SELECT id, username, email, is_admin as isAdmin, avatar, created_at as createdAt FROM users WHERE id = ?').get(req.user.id);
   res.json(user);
 });
 

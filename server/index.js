@@ -19,52 +19,65 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 images
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-async function startServer() {
-  await initDB();
+// Synchronous API Routes (Safe because routes themselves handle database lazily)
+app.use('/api/users', require('./routes/users'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/plans', require('./routes/plans'));
+app.use('/api/tickets', require('./routes/tickets'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/about', require('./routes/about'));
+app.use('/api/chat_messages', require('./routes/chat'));
 
-  // API Routes (Users must be first to avoid collisions)
-  app.use('/api/users', require('./routes/users'));
-  app.use('/api/auth', require('./routes/auth'));
-  app.use('/api/plans', require('./routes/plans'));
-  app.use('/api/tickets', require('./routes/tickets'));
-  app.use('/api/admin', require('./routes/admin'));
-  app.use('/api/about', require('./routes/about'));
-  app.use('/api/chat_messages', require('./routes/chat'));
+// Consistent aliases for Supabase shim
+app.use('/api/yt_partners', require('./routes/admin'));
+app.use('/api/location_settings', require('./routes/plans'));
+app.use('/api/paid_plans', require('./routes/plans'));
+app.use('/api/site_settings', require('./routes/plans'));
+app.use('/api/about_content', require('./routes/about'));
 
-  // Consistent aliases for Supabase shim
-  app.use('/api/yt_partners', require('./routes/admin'));
-  app.use('/api/location_settings', require('./routes/plans'));
-  app.use('/api/paid_plans', require('./routes/plans'));
-  app.use('/api/site_settings', require('./routes/plans'));
-  app.use('/api/about_content', require('./routes/about'));
+// Health check endpoint
+app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
-  // Ensure ALL 404s in /api return JSON, not HTML
-  app.all('/api/*', (req, res) => {
-    res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.originalUrl}` });
-  });
+// Ensure ALL 404s in /api return JSON, not HTML
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.originalUrl}` });
+});
 
-  // Serve static files in production
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../client/build')));
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/build')));
 
-    // Handle React routing - serve index.html for all non-API routes
-    app.get('*', (req, res) => {
-      if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, '../client/build/index.html'));
-      }
-    });
-  }
-
-  // Error handling middleware
-  app.use((err, req, res, next) => {
-    console.error('Server Error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  });
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🔥 Flame Cloud server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  // Handle React routing - serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(__dirname, '../client/build/index.html'));
+    }
   });
 }
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// Initialize DB and start server IF run directly
+async function startServer() {
+  try {
+    await initDB();
+    if (require.main === module) {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🔥 Flame Cloud server running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      });
+    }
+  } catch (err) {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  }
+}
+
+// Call startServer for side effects (connecting to DB)
 startServer();
+
+module.exports = app;

@@ -14,7 +14,7 @@ router.get('/', authMiddleware, async (req, res) => {
       params = [];
     }
 
-    const tickets = prepare(sql).all(...params);
+    const tickets = await prepare(sql).all(...params);
 
     const mappedTickets = (tickets || []).map(t => ({
       id: t.id,
@@ -41,7 +41,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   try {
-    const result = prepare('INSERT INTO tickets (user_id, subject, message, screenshot, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)')
+    const result = await prepare('INSERT INTO tickets (user_id, subject, message, screenshot, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)')
       .run(req.user.id, subject, message, screenshot || null, 'pending');
 
     res.json({ id: result.lastInsertRowid, message: 'Ticket submitted successfully' });
@@ -54,7 +54,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { status, admin_response } = req.body;
   try {
-    prepare('UPDATE tickets SET status=?, admin_response=? WHERE id=?').run(status, admin_response, req.params.id);
+    await prepare('UPDATE tickets SET status=?, admin_response=? WHERE id=?').run(status, admin_response, req.params.id);
     res.json({ message: 'Ticket updated successfully' });
   } catch (err) {
     console.error('Error updating ticket:', err);

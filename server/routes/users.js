@@ -7,20 +7,21 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Get user list (Authenticated users)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     let sql = 'SELECT id, username, email, avatar, is_admin as is_admin, created_at as created_at FROM users ORDER BY created_at DESC';
 
     // If not admin, only show administrators (Support Staff)
-    if (!req.user.isAdmin) {
-        sql = 'SELECT id, username, email, avatar, is_admin as is_admin, created_at as created_at FROM users WHERE is_admin = 1 ORDER BY created_at DESC';
+    const isAdmin = req.user.isAdmin === true || req.user.isAdmin === 1;
+    if (!isAdmin) {
+        sql = 'SELECT id, username, email, avatar, is_admin as is_admin, created_at as created_at FROM users WHERE is_admin = 1 OR is_admin = true ORDER BY created_at DESC';
     }
 
-    const users = prepare(sql).all();
+    const users = await prepare(sql).all();
     res.json(users);
 });
 
 // Update user (Own profile or Admin)
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
     const userId = req.params.id;
     const { username, email, avatar } = req.body;
 
@@ -42,20 +43,21 @@ router.put('/:id', (req, res) => {
 
         // Unique checks
         if (username) {
-            const existing = prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, userId);
+            const existing = await prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, userId);
             if (existing) return res.status(400).json({ error: 'Username already taken' });
         }
         if (email) {
-            const existing = prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
+            const existing = await prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
             if (existing) return res.status(400).json({ error: 'Email already in use' });
         }
 
         for (const u of updates) {
-            prepare(`UPDATE users SET ${u.k}=? WHERE id=?`).run(u.v, userId);
+            // Using parameterized query for key name is tricky but here it is simple field names
+            await prepare(`UPDATE users SET ${u.k}=$1 WHERE id=$2`).run(u.v, userId);
         }
 
-        const updated = prepare('SELECT id, username, email, avatar, is_admin as is_admin FROM users WHERE id = ?').get(userId);
-        saveDB();
+        const updated = await prepare('SELECT id, username, email, avatar, is_admin as is_admin FROM users WHERE id = ?').get(userId);
+        if (saveDB) saveDB();
         res.json({ message: 'User updated successfully', user: updated });
     } catch (err) {
         console.error('Error updating user:', err);
@@ -64,21 +66,21 @@ router.put('/:id', (req, res) => {
 });
 
 // Delete user (Admin only)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
     const isAdmin = req.user.isAdmin === true || req.user.isAdmin === 1;
     if (!isAdmin) {
         return res.status(403).json({ error: 'Admin access required for deletion' });
     }
 
     const userId = req.params.id;
-    const user = prepare('SELECT is_admin FROM users WHERE id = ?').get(userId);
-    if (user?.is_admin) {
+    const user = await prepare('SELECT is_admin FROM users WHERE id = ?').get(userId);
+    if (user?.is_admin || user?.isadmin) {
         return res.status(400).json({ error: 'Cannot delete admin user' });
     }
-    prepare('DELETE FROM chat_messages WHERE sender_id = ? OR receiver_id = ?').run(userId, userId);
-    prepare('DELETE FROM tickets WHERE user_id = ?').run(userId);
-    prepare('DELETE FROM users WHERE id = ?').run(userId);
-    saveDB();
+    await prepare('DELETE FROM chat_messages WHERE sender_id = ? OR receiver_id = ?').run(userId, userId);
+    await prepare('DELETE FROM tickets WHERE user_id = ?').run(userId);
+    await prepare('DELETE FROM users WHERE id = ?').run(userId);
+    if (saveDB) saveDB();
     res.json({ message: 'User deleted successfully' });
 });
 
