@@ -2,8 +2,8 @@
     "version": 2,
     "rewrites": [
         {
-            "source": "/api/health",
-            "destination": "/api/health.js"
+            "source": "/api/ping",
+            "destination": "/api/ping.js"
         },
         {
             "source": "/api/(.*)",

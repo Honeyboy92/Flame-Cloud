@@ -4,10 +4,12 @@ const bcrypt = require('bcryptjs');
 let pool = null;
 
 async function initDB() {
-  // Create connection pool
+  // Create connection pool with timeout
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 5000, // 5 second timeout to prevent hangs
+    max: 10 // Smaller pool for serverless
   });
 
   try {

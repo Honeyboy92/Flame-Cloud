@@ -50,8 +50,11 @@ app.all('/api/*', (req, res) => {
 });
 
 // Serve static files in production
-// Serve static files ONLY in non-serverless production (local node production)
-if (process.env.NODE_ENV === 'production' && require.main === module) {
+// Serve static files ONLY in local production, NOT on Vercel
+// Vercel handles static files via vercel.json rewrites or Zero Config
+const isVercel = process.env.VERCEL || process.env.NOW_DEPLOYMENT;
+
+if (process.env.NODE_ENV === 'production' && !isVercel && require.main === module) {
   app.use(express.static(path.join(__dirname, '../client/build')));
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
