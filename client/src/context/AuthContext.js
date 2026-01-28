@@ -7,7 +7,8 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 // Configure axios base URL
-const API_BASE = process.env.REACT_APP_API_URL || '';
+// If in development and no API URL provided, default to localhost:5000
+const API_BASE = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
