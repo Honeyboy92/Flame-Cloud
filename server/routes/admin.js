@@ -10,31 +10,32 @@ router.use(authMiddleware);
 // Apply admin check selectively below
 
 // Paid Plans CRUD (Admin only)
-router.get('/paid-plans', adminMiddleware, (req, res) => {
-  const plans = prepare('SELECT * FROM paid_plans ORDER BY sort_order').all();
+router.get('/paid-plans', adminMiddleware, async (req, res) => {
+  const plans = await prepare('SELECT * FROM paid_plans ORDER BY sort_order').all();
   res.json(plans);
 });
 
-router.post('/paid-plans', adminMiddleware, (req, res) => {
+router.post('/paid-plans', adminMiddleware, async (req, res) => {
   const { name, ram, cpu, storage, location, price, discount, sort_order } = req.body;
   // Get max sort_order and add 1 to put new plan at end
-  const maxOrder = prepare('SELECT MAX(sort_order) as maxOrder FROM paid_plans').get();
-  const newOrder = sort_order || ((maxOrder && maxOrder.maxOrder) ? maxOrder.maxOrder + 1 : 1);
-  const result = prepare('INSERT INTO paid_plans (name, ram, cpu, storage, location, price, discount, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(name, ram, cpu, storage || '10GB', location, price, discount || 0, newOrder);
-  saveDB();
+  const maxOrder = await prepare('SELECT MAX(sort_order) as "maxOrder" FROM paid_plans').get();
+  const actualMax = (maxOrder && (maxOrder.maxOrder || maxOrder.maxorder)) || 0;
+  const newOrder = sort_order || (actualMax + 1);
+  const result = await prepare('INSERT INTO paid_plans (name, ram, cpu, storage, location, price, discount, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(name, ram, cpu, storage || '10GB', location, price, discount || 0, newOrder);
+  if (saveDB) saveDB();
   res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/paid-plans/:id', adminMiddleware, (req, res) => {
+router.put('/paid-plans/:id', adminMiddleware, async (req, res) => {
   const { name, ram, cpu, storage, location, price, discount, sort_order } = req.body;
-  prepare('UPDATE paid_plans SET name=?, ram=?, cpu=?, storage=?, location=?, price=?, discount=?, sort_order=? WHERE id=?').run(name, ram, cpu, storage || '10GB', location, price, discount || 0, sort_order || 0, req.params.id);
-  saveDB();
+  await prepare('UPDATE paid_plans SET name=?, ram=?, cpu=?, storage=?, location=?, price=?, discount=?, sort_order=? WHERE id=?').run(name, ram, cpu, storage || '10GB', location, price, discount || 0, sort_order || 0, req.params.id);
+  if (saveDB) saveDB();
   res.json({ message: 'Plan updated' });
 });
 
-router.delete('/paid-plans/:id', adminMiddleware, (req, res) => {
-  prepare('DELETE FROM paid_plans WHERE id=?').run(req.params.id);
-  saveDB();
+router.delete('/paid-plans/:id', adminMiddleware, async (req, res) => {
+  await prepare('DELETE FROM paid_plans WHERE id=?').run(req.params.id);
+  if (saveDB) saveDB();
   res.json({ message: 'Plan deleted' });
 });
 
@@ -71,15 +72,15 @@ router.post('/paid-plans/restore-defaults', adminMiddleware, (req, res) => {
 });
 
 // Free Plans CRUD (Admin only)
-router.get('/free-plans', adminMiddleware, (req, res) => {
-  const plans = prepare('SELECT * FROM free_plans ORDER BY sort_order').all();
+router.get('/free-plans', adminMiddleware, async (req, res) => {
+  const plans = await prepare('SELECT * FROM free_plans ORDER BY sort_order').all();
   res.json(plans);
 });
 
-router.post('/free-plans', (req, res) => {
+router.post('/free-plans', adminMiddleware, async (req, res) => {
   const { name, ram, cpu, location, description, sort_order } = req.body;
-  const result = prepare('INSERT INTO free_plans (name, ram, cpu, location, description, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(name, ram, cpu, location, description, sort_order || 0);
-  saveDB();
+  const result = await prepare('INSERT INTO free_plans (name, ram, cpu, location, description, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(name, ram, cpu, location, description, sort_order || 0);
+  if (saveDB) saveDB();
   res.json({ id: result.lastInsertRowid });
 });
 
@@ -97,9 +98,9 @@ router.delete('/free-plans/:id', (req, res) => {
 });
 
 // Tickets (Admin only for full list/update)
-router.get('/tickets', adminMiddleware, (req, res) => {
-  const tickets = prepare(`
-    SELECT t.*, u.username, u.email as userEmail 
+router.get('/tickets', adminMiddleware, async (req, res) => {
+  const tickets = await prepare(`
+    SELECT t.*, u.username, u.email as "userEmail" 
     FROM tickets t 
     JOIN users u ON t.user_id = u.id 
     ORDER BY t.created_at DESC
@@ -107,10 +108,10 @@ router.get('/tickets', adminMiddleware, (req, res) => {
   res.json(tickets);
 });
 
-router.put('/tickets/:id', adminMiddleware, (req, res) => {
+router.put('/tickets/:id', adminMiddleware, async (req, res) => {
   const { status, adminResponse } = req.body;
-  prepare('UPDATE tickets SET status=?, adminResponse=? WHERE id=?').run(status, adminResponse, req.params.id);
-  saveDB();
+  await prepare('UPDATE tickets SET status=?, admin_response=? WHERE id=?').run(status, adminResponse, req.params.id);
+  if (saveDB) saveDB();
   res.json({ message: 'Ticket updated' });
 });
 
@@ -126,15 +127,12 @@ router.put('/credentials', (req, res) => {
 });
 
 // About Content Management
-router.get('/about', (req, res) => {
-  console.log('Admin about route called');
+router.get('/about', async (req, res) => {
   try {
-    const about = prepare('SELECT * FROM about_content LIMIT 1').get();
-    console.log('About data from DB:', about);
+    const about = await prepare('SELECT * FROM about_content LIMIT 1').get();
     if (about) {
       res.json(about);
     } else {
-      console.log('No about data found, returning default');
       const defaultData = {
         id: 1,
         content: "Flame Cloud is a next-generation gaming server hosting platform built for speed, power, and reliability.",
@@ -153,14 +151,14 @@ router.get('/about', (req, res) => {
   }
 });
 
-router.put('/about', adminMiddleware, (req, res) => {
+router.put('/about', adminMiddleware, async (req, res) => {
   const { content, founder_name, founder_photo, owner_name, owner_photo, management_name, management_photo } = req.body;
 
   // Check if record exists
-  const exists = prepare('SELECT id FROM about_content LIMIT 1').get();
+  const exists = await prepare('SELECT id FROM about_content LIMIT 1').get();
 
   if (exists) {
-    prepare(`UPDATE about_content SET 
+    await prepare(`UPDATE about_content SET 
       content=?, founder_name=?, founder_photo=?, 
       owner_name=?, owner_photo=?, management_name=?, management_photo=? 
       WHERE id=?`).run(
@@ -169,7 +167,7 @@ router.put('/about', adminMiddleware, (req, res) => {
       exists.id
     );
   } else {
-    prepare(`INSERT INTO about_content 
+    await prepare(`INSERT INTO about_content 
       (content, founder_name, founder_photo, owner_name, owner_photo, management_name, management_photo) 
       VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
       content, founder_name, founder_photo || null,
@@ -177,7 +175,7 @@ router.put('/about', adminMiddleware, (req, res) => {
     );
   }
 
-  saveDB();
+  if (saveDB) saveDB();
   res.json({ message: 'About content updated' });
 });
 
@@ -235,20 +233,20 @@ router.put('/yt-partners-reorder', adminMiddleware, (req, res) => {
 });
 
 // Site Settings
-router.get('/settings/:key', (req, res) => {
-  const setting = prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
+router.get('/settings/:key', async (req, res) => {
+  const setting = await prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
   res.json(setting || { key: req.params.key, value: '0' });
 });
 
-router.put('/settings/:key', adminMiddleware, (req, res) => {
+router.put('/settings/:key', adminMiddleware, async (req, res) => {
   const { value } = req.body;
-  const exists = prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
+  const exists = await prepare('SELECT * FROM site_settings WHERE key=?').get(req.params.key);
   if (exists) {
-    prepare('UPDATE site_settings SET value=? WHERE key=?').run(value, req.params.key);
+    await prepare('UPDATE site_settings SET value=? WHERE key=?').run(value, req.params.key);
   } else {
-    prepare('INSERT INTO site_settings (key, value) VALUES (?, ?)').run(req.params.key, value);
+    await prepare('INSERT INTO site_settings (key, value) VALUES (?, ?)').run(req.params.key, value);
   }
-  saveDB();
+  if (saveDB) saveDB();
   res.json({ message: 'Setting updated' });
 });
 
