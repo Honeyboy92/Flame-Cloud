@@ -16,6 +16,12 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api')) {
+    console.log(`[API Request] ${req.method} ${req.url}`);
+  }
+  next();
+});
 app.use(express.json({ limit: '10mb' })); // Increased limit for base64 images
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
