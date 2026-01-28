@@ -18,7 +18,7 @@ async function initDB() {
     // Create tables
     await createTables();
     await initializeDefaultData();
-    
+
     return pool;
   } catch (error) {
     console.error('❌ PostgreSQL connection failed:', error);
@@ -69,7 +69,7 @@ async function createTables() {
       message TEXT NOT NULL,
       screenshot TEXT,
       status VARCHAR(50) DEFAULT 'pending',
-      adminResponse TEXT,
+      admin_response TEXT,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
 
@@ -119,7 +119,7 @@ async function createTables() {
   for (const query of queries) {
     await pool.query(query);
   }
-  
+
   console.log('✅ Database tables created successfully');
 }
 
@@ -183,7 +183,7 @@ async function initializeDefaultData() {
         { name: 'Ruby Plan', ram: '32GB', cpu: '1000%', storage: '100 GB SSD', location: 'UAE', price: '3200 PKR', order: 8 },
         { name: 'Black Ruby Plan', ram: '34GB', cpu: '2000%', storage: '200 GB SSD', location: 'UAE', price: '3400 PKR', order: 9 }
       ];
-      
+
       for (const p of plans) {
         await pool.query(
           "INSERT INTO paid_plans (name, ram, cpu, storage, location, price, sortOrder) VALUES ($1, $2, $3, $4, $5, $6, $7)",
