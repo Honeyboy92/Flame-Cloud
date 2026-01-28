@@ -8,10 +8,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS configuration for production
+// CORS configuration - Allow all in production and dev for debugging
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? true  // Allow same origin in production
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: true, // Reflect or allow current origin
   credentials: true
 };
 
@@ -41,8 +40,8 @@ app.use('/api/paid_plans', require('./routes/plans'));
 app.use('/api/site_settings', require('./routes/plans'));
 app.use('/api/about_content', require('./routes/about'));
 
-// Health check endpoint
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
+// Health check endpoint (Moved to top)
+app.get('/api/health', (req, res) => res.json({ status: 'ok', environment: process.env.NODE_ENV, time: new Date().toISOString() }));
 
 // Ensure ALL 404s in /api return JSON, not HTML
 app.all('/api/*', (req, res) => {
