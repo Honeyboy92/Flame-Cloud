@@ -41,6 +41,7 @@ app.use('/api/site_settings', require('./routes/plans'));
 app.use('/api/about_content', require('./routes/about'));
 
 // Health check endpoint (Moved to top)
+app.get('/api/health-check', (req, res) => res.json({ status: 'ok', environment: process.env.NODE_ENV, time: new Date().toISOString() }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', environment: process.env.NODE_ENV, time: new Date().toISOString() }));
 
 // Ensure ALL 404s in /api return JSON, not HTML
@@ -49,10 +50,9 @@ app.all('/api/*', (req, res) => {
 });
 
 // Serve static files in production
-if (process.env.NODE_ENV === 'production') {
+// Serve static files ONLY in non-serverless production (local node production)
+if (process.env.NODE_ENV === 'production' && require.main === module) {
   app.use(express.static(path.join(__dirname, '../client/build')));
-
-  // Handle React routing - serve index.html for all non-API routes
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
       res.sendFile(path.join(__dirname, '../client/build/index.html'));
