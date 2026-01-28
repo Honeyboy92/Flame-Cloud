@@ -70,7 +70,10 @@ app.use((err, req, res, next) => {
 // Initialize DB and start server IF run directly
 async function startServer() {
   try {
+    console.log('📦 Initializing database...');
     await initDB();
+    console.log('✅ Database initialized');
+
     if (require.main === module) {
       app.listen(PORT, '0.0.0.0', () => {
         console.log(`🔥 Flame Cloud server running on port ${PORT}`);
@@ -78,12 +81,19 @@ async function startServer() {
       });
     }
   } catch (err) {
-    console.error('Failed to initialize database:', err);
-    process.exit(1);
+    console.error('❌ Failed to initialize database:', err);
+    // Don't exit in production/serverless, let the routes handle errors
+    if (require.main === module) process.exit(1);
   }
 }
 
-// Call startServer for side effects (connecting to DB)
-startServer();
+// Start server/initialization
+if (require.main === module) {
+  startServer();
+} else {
+  // In serverless, just fire and forget the init
+  // Or better, we can let the first request trigger it
+  initDB().catch(err => console.error('Lazy DB Init Error:', err));
+}
 
 module.exports = app;
